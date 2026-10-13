@@ -120,3 +120,10 @@ the 3 defect fixes are absent from the changelog; `06-sidekicks/briefs/` is refe
 3. Write the missing description of how who-gets-pinged is decided (with Wen Li).
 4. Filter-persistence tickets are noise; don't let them eat the first month.
 5. Priya's own caveat: she made calls faster than she checked them; read her claims critically.
+
+### Learned in session 2 (Module 2)
+- Interviews (4 handlers, 2-5 Sep) and 147 tickets (29 Jun-7 Sep) tell one story from different seats: vanished pings (15 tickets) are the common, milder effect; quiet phones (30 tickets, none before 12 Aug) are the rare, severe one. Tickets rose ~4x after release (about 6 to 28 a week); 83 of 107 post-release tickets are still open.
+- Pings data: after 4.2, the four (Farlight, The Undertow, Vesper, Meteor Mite) fell from ~49 to 3 pings a week over three weeks, with 53-64% missed; the other 12 responders missed ~15% but gained pings. Turn-downs flat. Fits the miss-lowers-score loop but is not proven.
+- Pings has no response times. Turn-downs all happen within 40s (median ~22s), so the 60s wait alone looks unlikely to explain the miss rise; accept times are unobservable. Replaying the weight change needs travel time, availability and routing scores, which are not in the database.
+- Vesper and Meteor Mite have no tickets; Farlight and The Undertow lead the quiet tickets but were not interviewed. Duplicate-notification tickets stop after 10 Aug. Some ticket text repeats across responders, so weight counts with care.
+- Drafted `handler-survey.md` (10 questions) and `request-to-marcus-and-wen-li.md`; neither sent. Still open: app display-vs-answer logs, routing scores for the four, and why those four miss so much more than the rest.
