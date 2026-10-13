@@ -24,6 +24,16 @@ prompt library built from your own questions.
 
 ### 1.
 
+Draw the roadmap
+
 ### 2.
 
+Give me best case/worst case for customer impact depending on how much work was completed, fully tested, etc. for the 4.2 release
+
 ### 3.
+
+Yes, pull the acceptance numbers from rook-database
+
+### 4.
+
+What's contradictory or missing across the wiki pages, the handover note, and the rest of this folder?
