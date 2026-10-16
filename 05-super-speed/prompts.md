@@ -21,6 +21,12 @@ We're going to explore possible solutions for the long-standing issue where once
 We are going to first spitball solutions and scope at a high level, then write a product brief together. We will not move on to a prototype built from this brief until I say so.
 
 Engineering could quietly revert the timeout and call it handled. Helen wants something that still works for the responder even with the faster window, built from their point of view. I think there could also be input from the handler at times - one example being to weigh in on any misses a responder had, e.g. "Oh that's legit and they shouldn't be punished for missing." Also we should work in a differentiation of turn downs vs misses.
+Where to look, and why
+
+* 05-super-speed/director-request.txt Helen's actual request. Your brief needs to answer exactly what she's asking for.
+* rook-wiki Glossary, Team directory, and the 4.2 release comments (people are named by role; the Team directory maps roles to names). Also read the Word doc 00-rook/company/notes/handoff-from-priya.docx. You already read these once on Day 1. Go back for the exact terms and names your brief needs.
+* Three things the brief needs who the solution is for, what changes for them once it exists, and what it deliberately doesn't do. This is the fix for the problem you've been investigating all along, made real for Vesper and others.
+
 
 If you have no questions here, start proposing possible features that are scoped for just the responder, for the responder and handler, and any data/logging improvements. Give me high level t-shirt sizes using anything you know based on what you might know about the working teams.
 
@@ -62,20 +68,24 @@ If we're good with everything, save the brief exactly as it stands now as 05-sup
 
 ### 5.
 
-Generate the rest of the releases for the prototype, being sure it's clear which release is being viewed, being able to switch releases, and marking clearly or listing what changes per release. All in one prototype.html
+Take the brief you just wrote and build me a working prototype, an actual screen I can click through, not a description of one. Save it as 05-super-speed/prototype.html, a single file I can just open in my browser. Show me where this would actually happen, and make at least one thing on it respond when I click it.
 
 ### 6.
 
-Make the release notes section expandable because I don't want it in my face all the time. Make the items on the list appear dynamically next to the phone or handler so we can see which are in play in each workflow.
+Generate the rest of the releases for the prototype, being sure it's clear which release is being viewed, being able to switch releases, and marking clearly or listing what changes per release. All in one prototype.html
 
 ### 7.
 
-Show me this happening to Meteor Mite specifically, using her name, the way Kip would see it.
+Make the release notes section expandable because I don't want it in my face all the time. Make the items on the list appear dynamically next to the phone or handler so we can see which are in play in each workflow.
 
 ### 8.
 
-Let's do another visual. I want to see a journey map of before and after for a few difference scenarios, also showing screenshots of the app or console or queue where appropriate. Not a clickable, a storyboard type approach
+Show me this happening to Meteor Mite specifically, using her name, the way Kip would see it.
 
 ### 9.
+
+Let's do another visual. I want to see a journey map of before and after for a few difference scenarios, also showing screenshots of the app or console or queue where appropriate. Not a clickable, a storyboard type approach
+
+### 10.
 
 I don't understand this "He is still on the stairs when it hits 0. Because he had already opened the ping, he gets 15 more seconds." if he is racing up the stairs to get his phone, how has he already answered the ping for it to get 15 more seconds?
