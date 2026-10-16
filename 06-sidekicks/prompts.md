@@ -15,6 +15,28 @@ prompt library built from your own questions.
 
 ### 1.
 
+I want to save a habit as something I can reuse. When I review a brief before it goes any further, here's what I actually check for:
+- It names who owns it
+- It says how we'll know it worked
+- The scope at the end matches the scope at the start
+- It explains the problem before it proposes a fix
+- The questions or behaviors we'd want to understand after release are proposed
+- It identifies products, PMs, and/or teams who would need to weigh in on proposed work.
+
+Turn that into a skill called review-checklist, so I can point it at any brief and get the same check every time, without me explaining it again.
+
 ### 2.
 
+/review-checklist 05-super-speed/brief.md
+
 ### 3.
+
+/review-checklist https://github.com/dbalestra/claude-code-for-pms-final/blob/main/05-super-speed/brief.md
+
+### 4.
+
+Fetch the URL as a one-off
+
+### 5.
+
+Schedule review-checklist to run every Monday morning, and let me know what it finds. Nothing needs to be ready for it to fire today. I'm setting the habit, not waiting on the result.
