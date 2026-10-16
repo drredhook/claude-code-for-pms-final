@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Rook Dispatch — release prototype (A, B, C)</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: Segoe UI, Arial, sans-serif; background: #eef0f3; color: #1b1f24; }
+  header { background: #1b1f24; color: #fff; padding: 10px 20px; display: flex; gap: 16px; align-items: center; flex-wrap: wrap; }
+  header h1 { font-size: 16px; margin: 0; font-weight: 600; }
+  .tag { font-size: 12px; background: #b45309; padding: 2px 8px; border-radius: 10px; }
+  .rels { display: flex; gap: 6px; }
+  .rels button { background: #343b45; color: #fff; border: 2px solid transparent; padding: 8px 16px; cursor: pointer; font-size: 15px; font-weight: 600; border-radius: 6px; }
+  .rels button.on { background: #f59e0b; color: #1b1f24; border-color: #fff; }
+  .tabs button { background: #343b45; color: #fff; border: 0; padding: 8px 14px; cursor: pointer; font-size: 14px; }
+  .tabs button.on { background: #2563eb; }
+  .tabs button:first-child { border-radius: 6px 0 0 6px; } .tabs button:last-child { border-radius: 0 6px 6px 0; }
+  .hdr-btn { background: #343b45; color: #fff; border: 0; padding: 7px 12px; border-radius: 6px; cursor: pointer; font-size: 13px; margin-left: auto; }
+  main { max-width: 1040px; margin: 16px auto 40px; padding: 0 16px; }
+  .banner { background: #fff; border: 2px solid #f59e0b; border-radius: 10px; padding: 12px 16px; margin-bottom: 16px; }
+  .banner h2 { margin: 0 0 2px; font-size: 18px; }
+  .banner .sub { color: #4b5563; font-size: 13px; margin: 0 0 10px; }
+  .cols { display: flex; gap: 24px; flex-wrap: wrap; }
+  .cols > div { flex: 1; min-width: 280px; }
+  .cols h3 { font-size: 12px; text-transform: uppercase; letter-spacing: .04em; margin: 0 0 4px; }
+  .cols ul { margin: 0; padding-left: 0; list-style: none; font-size: 13px; }
+  .cols li { padding: 3px 0; }
+  .cols li .r { display: inline-block; min-width: 38px; font-weight: 600; color: #6b7280; }
+  .cols .old li { color: #6b7280; }
+  .newbadge { display: inline-block; background: #f59e0b; color: #1b1f24; font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 8px; margin-left: 6px; vertical-align: middle; }
+  .engine { display: inline-block; background: #e5e7eb; color: #374151; font-size: 10px; padding: 1px 6px; border-radius: 8px; margin-left: 6px; }
+  .note { font-size: 13px; color: #4b5563; margin: 0 0 12px; }
+  .stage { display: flex; gap: 32px; flex-wrap: wrap; align-items: flex-start; }
+  .new { outline: 2px dashed #f59e0b; outline-offset: 2px; border-radius: 6px; }
+
+  .phone { width: 340px; height: 640px; background: #fff; border: 10px solid #1b1f24; border-radius: 34px; overflow: hidden; display: flex; flex-direction: column; position: relative; }
+  .phone .bar { background: #1e3a5f; color: #fff; padding: 14px 16px; font-weight: 600; }
+  .phone .bar small { display: block; font-weight: 400; opacity: .8; font-size: 12px; }
+  .phone .body { flex: 1; padding: 16px; overflow-y: auto; }
+  .phone nav { display: flex; border-top: 1px solid #d1d5db; }
+  .phone nav button { flex: 1; padding: 12px 4px; border: 0; background: #f9fafb; cursor: pointer; font-size: 13px; }
+  .phone nav button.on { background: #dbeafe; font-weight: 600; }
+  .btn { display: block; width: 100%; padding: 12px; border-radius: 8px; border: 0; font-size: 15px; cursor: pointer; margin-top: 10px; }
+  .btn.primary { background: #2563eb; color: #fff; } .btn.green { background: #15803d; color: #fff; }
+  .btn.plain { background: #e5e7eb; } .btn.small { width: auto; display: inline-block; padding: 6px 10px; font-size: 13px; margin-top: 6px; }
+  .card { border: 1px solid #d1d5db; border-radius: 10px; padding: 12px; margin-bottom: 10px; font-size: 14px; }
+  .card .when { font-weight: 600; }
+  .pill { display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: 10px; margin-top: 6px; }
+  .pill.counted { background: #fee2e2; color: #991b1b; } .pill.rev { background: #dcfce7; color: #166534; }
+  .pill.wait { background: #fef3c7; color: #92400e; } .pill.no { background: #e5e7eb; color: #374151; }
+  .ring { width: 150px; height: 150px; border-radius: 50%; margin: 14px auto; display: flex; align-items: center; justify-content: center; font-size: 44px; font-weight: 700; }
+  .ping h2 { margin: 6px 0; text-align: center; font-size: 20px; }
+  .ping p { text-align: center; margin: 4px 0; color: #4b5563; font-size: 14px; }
+  .gauge { height: 10px; border-radius: 5px; background: #e5e7eb; overflow: hidden; margin: 8px 0; }
+  .gauge div { height: 100%; background: #2563eb; }
+  .overlay { position: absolute; inset: 0; background: rgba(0,0,0,.5); display: none; align-items: flex-end; }
+  .overlay.on { display: flex; }
+  .sheet { background: #fff; width: 100%; padding: 16px; border-radius: 16px 16px 0 0; }
+  .sheet label { display: block; margin: 6px 0; font-size: 14px; }
+  .sheet textarea { width: 100%; height: 52px; }
+
+  .console { flex: 1; min-width: 480px; background: #fff; border: 1px solid #d1d5db; border-radius: 8px; overflow: hidden; }
+  .console .top { background: #1e3a5f; color: #fff; padding: 12px 16px; }
+  .console .in { padding: 16px; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th, td { text-align: left; padding: 8px; border-bottom: 1px solid #e5e7eb; }
+  th { background: #f3f4f6; }
+  .admin { background: #fffbeb; border: 1px solid #fde68a; border-radius: 8px; padding: 10px 12px; margin-top: 14px; font-size: 13px; }
+  .admin.grey { background: #f3f4f6; border-color: #d1d5db; }
+  .admin.red { background: #fef2f2; border-color: #fecaca; }
+  .admin input[type=number] { width: 56px; }
+  .bars { display: flex; align-items: flex-end; gap: 6px; height: 60px; margin: 8px 0; }
+  .bars div { width: 28px; background: #2563eb; text-align: center; font-size: 10px; color: #fff; }
+  .toast { position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%); background: #1b1f24; color: #fff; padding: 10px 16px; border-radius: 8px; font-size: 14px; display: none; z-index: 5; }
+  .controls { margin-top: 4px; width: 340px; font-size: 13px; }
+  .controls button { margin: 3px 4px 3px 0; padding: 6px 10px; cursor: pointer; }
+  .hidden { display: none; }
+  .cards { display: flex; gap: 10px; }
+  .rcard { flex: 1; border: 2px solid #d1d5db; border-radius: 8px; padding: 10px; font-size: 13px; cursor: pointer; background: #fff; }
+  .rcard.sel { border-color: #2563eb; background: #eff6ff; }
+  .rcard h4 { margin: 0 0 4px; font-size: 15px; }
+  .rcard .big { font-size: 22px; font-weight: 700; }
+  .rcard.quiet .big { color: #b45309; } .rcard.busy .big { color: #166534; }
+  .banner summary { cursor: pointer; font-size: 13px; color: #2563eb; font-weight: 600; }
+  .play { width: 290px; background: #fff; border: 1px solid #d1d5db; border-radius: 8px; padding: 12px; font-size: 13px; align-self: flex-start; }
+  .play h3 { margin: 0 0 2px; font-size: 14px; }
+  .play .legend { color: #6b7280; font-size: 11px; margin: 0 0 8px; }
+  .play .it { border: 1px solid #e5e7eb; border-left: 4px solid #d1d5db; border-radius: 6px; padding: 6px 8px; margin-bottom: 6px; color: #6b7280; }
+  .play .it b { color: #374151; }
+  .play .it .hint { font-size: 11px; display: block; }
+  .play .it.on { border-left-color: #2563eb; background: #eff6ff; color: #1e3a8a; }
+  .play .it.hit { border-left-color: #15803d; color: #166534; }
+  .play .it.pulse { background: #dcfce7; animation: flash .6s 3; }
+  .play .st { float: right; font-size: 10px; font-weight: 700; }
+  @keyframes flash { 50% { background: #86efac; } }
+</style>
+</head>
+<body>
+<header>
+  <h1>Rook Dispatch</h1><span class="tag">Prototype · fictional data</span>
+  <div class="tabs">
+    <button id="sc-vesper" onclick="setPersona('vesper')">Vesper · Aunt Dot</button>
+    <button id="sc-mite" onclick="setPersona('mite')">Meteor Mite · Kip</button>
+  </div>
+  <div class="rels">
+    <button id="rel1" onclick="setRel(1)">Release A</button>
+    <button id="rel2" onclick="setRel(2)">Release B</button>
+    <button id="rel3" onclick="setRel(3)">Release C</button>
+  </div>
+  <div class="tabs">
+    <button id="tab-phone" onclick="showView('phone')"></button>
+    <button id="tab-console" onclick="showView('console')"></button>
+    <button id="tab-support" onclick="showView('support')">Support review queue</button>
+  </div>
+  <button class="hdr-btn" onclick="resetDemo()">Reset demo</button>
+</header>
+<main>
+  <div class="banner">
+    <h2 id="b-title"></h2>
+    <p class="sub" id="b-sub"></p>
+    <details id="notes">
+      <summary>Release notes: what is new, and what shipped earlier</summary>
+      <div class="cols" style="margin-top:10px">
+        <div><h3 style="color:#b45309">New in this release</h3><ul id="b-new"></ul></div>
+        <div><h3 style="color:#6b7280">Already shipped in earlier releases</h3><ul id="b-old" class="old"></ul></div>
+      </div>
+      <p class="note" style="margin:8px 0 0">Items with a dashed orange outline on screen are new in the release you are viewing. Release numbers are placeholders; Helen and Marcus set the real ones.</p>
+    </details>
+  </div>
+  <p class="note" id="note"></p>
+
+  <div id="view-phone" class="stage">
+    <div>
+      <div class="phone">
+        <div class="bar" id="ph-bar"></div>
+        <div class="body" id="phone-body"></div>
+        <nav>
+          <button id="n-home" onclick="go('home')">Home</button>
+          <button id="n-missed" onclick="go('missed')">Missed pings <span id="n-badge"></span></button>
+        </nav>
+        <div class="overlay" id="sheet-wrap">
+          <div class="sheet">
+            <strong>Ask for a review</strong>
+            <p style="font-size:13px;margin:4px 0">What happened with the <span id="sheet-when"></span> ping?</p>
+            <label><input type="radio" name="why" value="Didn't see it" checked> I didn't see it</label>
+            <label><input type="radio" name="why" value="Wasn't available"> I wasn't available</label>
+            <label><input type="radio" name="why" value="Phone problem"> Phone problem</label>
+            <label><input type="radio" name="why" value="Too far"> Too far</label>
+            <label><input type="radio" name="why" value="Other"> Other</label>
+            <textarea id="why-note" placeholder="Optional short note (no personal details)"></textarea>
+            <button class="btn primary" onclick="submitReview()">Send request</button>
+            <button class="btn plain" onclick="closeSheet()">Cancel</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="controls">
+      <strong>Try it</strong>
+      <p style="margin:4px 0 8px">These stand in for things that happen on their own.</p>
+      <button onclick="sendPing(false)" id="btn-ping"></button>
+      <button onclick="unseenPing()" id="btn-unseen"></button>
+      <span data-rel="3"><button onclick="sendPing(true)">Send a re-entry ping</button></span>
+      <label data-rel="2" style="display:block;margin-top:8px"><input type="checkbox" id="has-handler" checked onchange="hasHandler=this.checked"> <span id="lbl-handler"></span></label>
+      <p style="margin-top:12px" id="no-popup"></p>
+    </div>
+    <div class="play" id="play-phone"></div>
+  </div>
+
+  <div id="view-console" class="stage hidden">
+    <div class="console">
+      <div class="top" id="c-top"></div>
+      <div class="in">
+        <div class="cards" id="roster"></div>
+        <div class="admin red" id="alert" data-rel="3"></div>
+        <table style="margin-top:12px">
+          <thead><tr><th>When</th><th>Opened?</th><th>Status</th><th>Reason</th><th></th></tr></thead>
+          <tbody id="console-rows"></tbody>
+        </table>
+        <div class="admin">
+          <strong>Auto-reversal limit (X)</strong> — a no-opened miss is reversed automatically unless no-opened misses are more than
+          <input type="number" id="x-input" value="25" min="0" max="100" onchange="setX(this.value)">% of <span id="x-who"></span> pings.<br>
+          Changing this takes effect now. It does not need a release. <span id="x-status"></span>
+        </div>
+        <div class="admin grey">Share now: <strong id="share"></strong> of <span id="pings-total"></span> pings were missed without being opened.
+          · Excuses this week: <strong id="excuses"></strong> (cap is a placeholder)</div>
+        <div class="admin grey" data-rel="2">
+          <strong>Weekly report by responder</strong> <small>(illustrative figures based on the 4.2 data)</small>
+          <table style="margin-top:6px"><thead><tr><th>Responder</th><th>Pings/wk before 4.2</th><th>Pings/wk now</th><th>Missed now</th></tr></thead>
+          <tbody id="rep-body"></tbody></table>
+        </div>
+        <div class="admin grey" data-rel="3">
+          <strong>Shadow scoring</strong> — proposed scoring computed alongside the live rules, both logged. <small>(demo values)</small>
+          <p style="margin:6px 0">Live 4.2 rules (a miss = a turn-down, floor 0, no recovery): <strong id="sc-old"></strong><br>
+          Proposed (miss costs less, floor 0.2, eases back): <strong id="sc-new"></strong></p>
+          <button onclick="advanceWeek()">Advance a week</button>
+        </div>
+        <div class="admin grey"><strong>Audit log</strong><div id="audit" style="margin-top:6px">Nothing yet.</div></div>
+      </div>
+    </div>
+    <div class="play" id="play-console"></div>
+  </div>
+
+  <div id="view-support" class="stage hidden">
+    <div class="console">
+      <div class="top"><strong>Support review queue</strong><br><small>Review requests from responders with no handler</small></div>
+      <div class="in">
+        <table>
+          <thead><tr><th>Responder</th><th>When</th><th>Reason</th><th></th></tr></thead>
+          <tbody id="support-rows"></tbody>
+        </table>
+        <p class="note" id="support-empty"></p>
+      </div>
+    </div>
+    <div class="play" id="play-support"></div>
+  </div>
+</main>
+<div class="toast" id="toast"></div>
+
+<script>
+var RELEASES = {
+  1: { name: 'Release A — fix the engine, first visible change', sub: 'The scoring change ships with something responders and handlers can see.',
+    items: [
+      ['R1–R6','Miss and turn-down scored separately; a miss costs less; scores ease back; floor raised; scores durable','engine'],
+      ['R7','Countdown on the ping screen'],
+      ['R8','Opened event recorded when the ping screen renders','engine'],
+      ['R9','"Missed pings" list the responder opens on their own'],
+      ['R10','Responder can request a review of a miss'],
+      ['R11','Auto-reversal for never-opened misses, with a limit X changeable without a release'],
+      ['R14','Handler console lists misses and whether opened'],
+      ['R15','Handler marks a miss legit: full reversal, audit logged'],
+      ['R18','Weekly cap on handler excuses'],
+      ['R19–R20','Per-ping and excuse logging','engine']
+    ]},
+  2: { name: 'Release B — a fair window and a clear path back', sub: 'More time to answer when you have already opened a ping, and a plain-language standing card.',
+    items: [
+      ['R12','Opened-ping grace: +15s if the ping was opened before time ran out'],
+      ['R13','"Your standing" card on the home screen'],
+      ['R16','Review requests go to the handler first; with no handler they go to the support team'],
+      ['R21','Weekly report by responder, not only the aggregate']
+    ]},
+  3: { name: 'Release C — spot it early, prove it, bring people back', sub: 'Proactive alerts, evidence on the scoring, and a way back into the ping order.',
+    items: [
+      ['R17','Quiet-responder alert in the handler console'],
+      ['R22','Shadow scoring: proposed scores logged next to live scores'],
+      ['R23','Re-entry slot: occasional pings for responders far down the list']
+    ]}
+};
+var rel = 1, view = 'phone', screen = 'home', X = 25, timer = null, reviewId = null, nextId = 4;
+var misses, totalPings, noOpened, newScore, oldScore, audit, excuses, hasHandler = true, week = 0;
+
+var E1 = 'R1–R6', E2 = 'R19–R20', hits = {}, graceOn = false, curReentry = false;
+var PERSONAS = {
+  vesper: { name:'Vesper', area:'Old Town', handler:'Aunt Dot', s:'he', o:'him', p:'his', other:null, missedPct:'~60%',
+            ping:'Structural-entry · Old Town · about 12 min away' },
+  mite:   { name:'Meteor Mite', area:'Eastgate', handler:'Kip', s:'she', o:'her', p:'her', other:'The Gale', missedPct:'~55%',
+            ping:'Callout · Eastgate · about 12 min away' }
+};
+var P = PERSONAS.vesper, selResp = 'main';
+function setPersona(k){ P = PERSONAS[k]; selResp = 'main'; resetDemo(); showView('console' === view ? 'console' : view); }
+function selectResp(w){ selResp = w; render(); }
+function applyStatic(){
+  $('sc-vesper').className = P===PERSONAS.vesper ? 'on' : ''; $('sc-mite').className = P===PERSONAS.mite ? 'on' : '';
+  $('tab-phone').textContent = 'Responder phone ('+P.name+')'; $('tab-console').textContent = 'Handler console ('+P.handler+')';
+  $('ph-bar').innerHTML = P.name+'<small>'+P.area+' · Available</small>';
+  $('btn-ping').textContent = 'Send '+P.name+' a ping';
+  $('btn-unseen').textContent = 'Simulate a ping that never reached '+P.p+' screen';
+  $('lbl-handler').textContent = P.name+' has a handler (untick to send review requests to support instead)';
+  $('no-popup').textContent = 'There is deliberately no pop-up after a miss. '+P.s.charAt(0).toUpperCase()+P.s.slice(1)+' goes to Missed pings '+(P.s==='she'?'herself':'himself')+'.';
+  $('x-who').textContent = P.name+'’s';
+  $('support-empty').textContent = 'Nothing waiting. Untick "'+P.name+' has a handler" on the phone tab, then send a review request to see it land here.';
+  $('c-top').innerHTML = '<strong>'+(P.other ? 'Your responders' : 'Responder: '+P.name)+'</strong> · handler '+P.handler+'<br><small>'+(P.other ? P.name+' and '+P.other+', side by side' : 'Recent missed pings')+'</small>';
+  var rows = [
+    [P.name, '~12', '~1', P.missedPct, true]
+  ];
+  if (P!==PERSONAS.vesper) rows.push(['Vesper','~12','~1','~60%']);
+  rows.push(['The Undertow','~12','~1','~64%'], ['Farlight','~12','~1','~53%']);
+  if (P.other) rows.push([P.other,'~10','~20','~0%'], ['The other 10 (total)','~110','~140','~15%']);
+  else rows.push(['Meteor Mite','~12','~1','~55%'], ['The other 12 (total)','~120','~160','~15%']);
+  $('rep-body').innerHTML = rows.map(function(r){ return '<tr'+(r[4]?' style="font-weight:700"':'')+'><td>'+r[0]+'</td><td>'+r[1]+'</td><td>'+r[2]+'</td><td>'+r[3]+'</td></tr>'; }).join('');
+}
+function renderRoster(){
+  var open = misses.filter(function(m){return m.status==='counted' || m.status==='requested';}).length;
+  var h = '<div class="rcard quiet'+(selResp==='main'?' sel':'')+'" onclick="selectResp(\'main\')"><h4>'+P.name+'</h4>~1 ping this week<div class="big">'+open+'</div>misses counted against '+P.o+'</div>';
+  if (P.other) h += '<div class="rcard busy'+(selResp==='other'?' sel':'')+'" onclick="selectResp(\'other\')"><h4>'+P.other+'</h4>~20 pings this week <small>(illustrative)</small><div class="big">0</div>misses counted</div>';
+  $('roster').innerHTML = h;
+}
+/* id -> [views it appears in, how it comes into play] */
+var PLAY = {
+  'R7':  [['phone'], 'Send a ping'],
+  'R8':  [['phone'], 'Send a ping (recorded when the ping screen shows)'],
+  'R9':  [['phone'], 'Open the Missed pings tab'],
+  'R10': [['phone'], 'Ask for a review of a miss'],
+  'R11': [['phone','console'], 'Simulate a never-seen ping, or change X in the console'],
+  'R12': [['phone'], 'Let a ping run out (skip to the last 5 seconds)'],
+  'R13': [['phone'], 'Go to the Home tab'],
+  'R16': [['phone','support'], 'Send a review request; untick the handler box to route it to support'],
+  'R23': [['phone'], 'Send a re-entry ping'],
+  'R14': [['console'], 'Open the handler console'],
+  'R15': [['console','support'], 'Mark legit (handler) or Approve (support)'],
+  'R18': [['console'], 'Mark legit: the weekly cap counts it'],
+  'R17': [['console'], 'Open the handler console'],
+  'R21': [['console'], 'Open the handler console'],
+  'R22': [['console'], 'Advance a week'],
+};
+PLAY[E1] = [['phone','console'], 'Any answer, miss or reversal changes the score behind the screen'];
+PLAY[E2] = [['phone','console','support'], 'Any ping, review or excuse is logged'];
+function fire(ids){ ids.forEach(function(i){ hits[i] = Date.now(); }); renderPlay(); setTimeout(renderPlay, 2600); }
+function isOn(id){
+  if (id==='R7' || id==='R8') return !!timer;
+  if (id==='R9') return view==='phone' && screen==='missed' && !timer;
+  if (id==='R13') return view==='phone' && screen==='home' && !timer;
+  if (id==='R12') return !!timer && graceOn;
+  if (id==='R23') return !!timer && curReentry;
+  if (id==='R14' || id==='R17' || id==='R21' || id==='R22') return view==='console';
+  return false;
+}
+function renderPlay(){
+  var el = $('play-'+view); if (!el) return;
+  var order = [], seen = {};
+  for (var k=1;k<=rel;k++) RELEASES[k].items.forEach(function(it){ if (!seen[it[0]]) { seen[it[0]] = [it, k]; order.push(it[0]); } });
+  var h = '<h3>In play here</h3><p class="legend">Blue = on screen now · green = triggered this session · grey = not yet. Showing '+(view==='phone'?'the phone':view==='console'?'the handler console':'the support queue')+', Release '+'ABC'.charAt(rel-1)+'.</p>';
+  var n = 0;
+  order.forEach(function(id){
+    var p = PLAY[id]; if (!p || p[0].indexOf(view)<0) return;
+    n++;
+    var it = seen[id][0], k = seen[id][1], t = hits[id] ? Date.now()-hits[id] : null;
+    var cls = 'it' + (isOn(id)?' on':'') + (t!==null?' hit':'') + (t!==null && t<2500?' pulse':'');
+    var st = isOn(id) ? 'ON SCREEN' : (t!==null ? (t<2500?'JUST NOW':'DONE') : '');
+    h += '<div class="'+cls+'"><span class="st">'+st+'</span><b>'+id+'</b>'+(k===rel?'<span class="newbadge">NEW</span>':'')+' '+it[1]+'<span class="hint">'+p[1]+'</span></div>';
+  });
+  if (!n) h += '<p>Nothing from this release applies to this screen.</p>';
+  el.innerHTML = h;
+}
+function $(id){ return document.getElementById(id); }
+function toast(t){ var e=$('toast'); e.textContent=t; e.style.display='block'; clearTimeout(e._t); e._t=setTimeout(function(){e.style.display='none';}, 3200); }
+function clamp(v,a,b){ return Math.max(a, Math.min(b, v)); }
+function tagNew(r){ return rel===r ? '<span class="newbadge">NEW</span>' : ''; }
+
+function resetDemo(){
+  clearInterval(timer); timer = null; hits = {}; graceOn = false; curReentry = false;
+  misses = [
+    {id:1, when:'Mon 12 Oct, 21:14', opened:true,  status:'counted', reason:'', route:'handler'},
+    {id:2, when:'Wed 14 Oct, 02:40', opened:false, status:'rev-auto', reason:'', route:'handler'},
+    {id:3, when:'Thu 15 Oct, 19:05', opened:true,  status:'counted', reason:'', route:'handler'}
+  ];
+  totalPings = 20; noOpened = 1; newScore = 0.22; oldScore = 0; audit = []; excuses = 1; week = 0; screen = 'home'; nextId = 4;
+  X = 25; $('x-input').value = 25; $('x-status').textContent = '';
+  render();
+}
+function setRel(r){
+  clearInterval(timer); timer = null; rel = r; screen = 'home';
+  if (rel < 2 && view === 'support') view = 'phone';
+  showView(view);
+}
+function showView(v){
+  view = v;
+  ['phone','console','support'].forEach(function(n){ $('view-'+n).className = (n===v) ? 'stage' : 'stage hidden'; $('tab-'+n).className = (n===v) ? 'on' : ''; });
+  render();
+}
+function go(s){ clearInterval(timer); timer = null; screen = s; render(); }
+
+function render(){
+  applyStatic();
+  for (var i=1;i<=3;i++) $('rel'+i).className = (i===rel) ? 'on' : '';
+  var R = RELEASES[rel];
+  $('b-title').textContent = 'You are viewing: ' + R.name;
+  $('b-sub').textContent = R.sub;
+  var n = '', o = '';
+  for (var k=1;k<=rel;k++) RELEASES[k].items.forEach(function(it){
+    var li = '<li><span class="r">'+it[0]+'</span>'+it[1]+(it[2]==='engine' ? '<span class="engine">no screen</span>' : '')+(k===rel?'<span class="newbadge">NEW</span>':'')+'</li>';
+    if (k===rel) n += li; else o += li;
+  });
+  $('b-new').innerHTML = n; $('b-old').innerHTML = o || '<li>Nothing — this is the first release.</li>';
+  $('tab-support').style.display = rel>=2 ? '' : 'none';
+  $('note').textContent = {
+    phone: "Where it happens: "+P.name+"'s phone app.",
+    console: "Where it happens: the handler console. "+P.handler+" sees "+P.name+"'s misses and can undo one that wasn't "+P.p+" fault."+(P.other ? " "+P.other+" sits next to "+P.name+" on the same screen, as it does for "+P.handler+" today." : ""),
+    support: "Where it happens: the support team's queue, for responders who have no handler."
+  }[view];
+  document.querySelectorAll('[data-rel]').forEach(function(el){
+    var r = Number(el.getAttribute('data-rel'));
+    el.style.display = rel>=r ? '' : 'none';
+    if (el.classList) el.classList.toggle('new', rel===r);
+  });
+  renderPhone(); renderConsole(); renderSupport(); renderPlay();
+}
+
+function statusPill(m){
+  return {
+    counted: '<span class="pill counted">Counted against you</span>',
+    'rev-auto': '<span class="pill rev">Reversed: the ping never reached your screen</span>',
+    'rev-handler': '<span class="pill rev">Reversed in full</span>',
+    requested: '<span class="pill wait">Review requested'+(m.route==='support'?' · with support':' · with your handler')+'</span>',
+    declined: '<span class="pill no">Review declined</span>'
+  }[m.status];
+}
+function standingText(){
+  var s = newScore;
+  if (s < 0.35) return ['Building back', 18, 'Recent misses count for less than turning pings down, and your standing eases back over time. Taking a ping lifts it.'];
+  if (s < 0.6) return ['Steady', 50, 'You are in a good spot. Answering pings keeps you there.'];
+  return ['Strong', 85, 'You are near the front for callouts in your area.'];
+}
+function renderPhone(){
+  $('n-home').className = screen==='home' ? 'on' : ''; $('n-missed').className = screen==='missed' ? 'on' : '';
+  var open = misses.filter(function(m){return m.status==='counted';}).length;
+  $('n-badge').innerHTML = open ? '('+open+')' + tagNew(1) : tagNew(1);
+  if (timer) return;
+  var b = $('phone-body');
+  if (screen==='home') {
+    var h = '<p style="margin-top:0">You are <strong>available</strong> for callouts.</p>';
+    if (rel>=2) {
+      var st = standingText();
+      h += '<div class="card new"><strong>Your standing: '+st[0]+'</strong>'+tagNew(2)+'<div class="gauge"><div style="width:'+st[1]+'%"></div></div><span style="font-size:13px">'+st[2]+'</span></div>';
+    }
+    h += '<div class="card">Your pings show a countdown, so you can see how long you have to answer.'+(rel>=2?' If time runs out after you have opened a ping, you get 15 more seconds.':'')+'</div>';
+    h += '<div class="card">Missed a ping? Look it up under <strong>Missed pings</strong> and ask for a review.</div>';
+    b.innerHTML = h;
+  } else {
+    var m = '<p style="margin-top:0;font-size:13px;color:#4b5563">Pings you didn\'t answer in time. A miss costs less than turning a ping down.</p>';
+    misses.slice().reverse().forEach(function(x){
+      m += '<div class="card"><div class="when">'+x.when+'</div>'+(x.opened?'You opened it but it timed out.':'It never reached your screen.')+'<br>'+statusPill(x);
+      if (x.status==='counted') m += '<br><button class="btn small plain" onclick="openSheet('+x.id+')">Ask for a review</button>';
+      if (x.reason) m += '<div style="font-size:12px;color:#6b7280;margin-top:4px">Your reason: '+x.reason+'</div>';
+      m += '</div>';
+    });
+    b.innerHTML = m;
+  }
+}
+function renderConsole(){
+  renderRoster();
+  var rows = '';
+  if (selResp==='other') rows = '<tr><td colspan="5">'+P.other+' has no missed pings this month. Nothing to review. <small>(illustrative)</small></td></tr>';
+  else misses.filter(function(m){return m.route!=='support';}).slice().reverse().forEach(function(m){
+    var s = {counted:'Counted', 'rev-auto':'Reversed (automatic)', 'rev-handler':'Reversed (handler)', requested:'Review requested', declined:'Declined'}[m.status];
+    var can = (m.status==='counted'||m.status==='requested') ;
+    rows += '<tr><td>'+m.when+'</td><td>'+(m.opened?'Yes':'No')+'</td><td>'+s+'</td><td>'+(m.reason||'—')+'</td><td>'
+      + (can ? '<button onclick="markLegit('+m.id+')"'+(excuses>=5?' disabled':'')+'>Mark legit</button>' : '') + '</td></tr>';
+  });
+  $('console-rows').innerHTML = rows;
+  $('share').textContent = Math.round(100*noOpened/totalPings)+'%';
+  $('pings-total').textContent = totalPings;
+  $('excuses').textContent = excuses+' of 5';
+  $('audit').innerHTML = audit.length ? audit.join('<br>') : 'Nothing yet.';
+  $('sc-old').textContent = oldScore.toFixed(2); $('sc-new').textContent = newScore.toFixed(2);
+  $('alert').innerHTML = '<strong>Quiet-responder alert'+tagNew(3)+'</strong><br>'+P.name+'\'s pings have fallen from about 12 a week to about 1.'+(P.other ? ' '+P.other+', on the same screen, is busier than usual: the gap you were seeing is a pattern, not a coincidence.' : '')
+    + '<div class="bars"><div style="height:100%">12</div><div style="height:92%">11</div><div style="height:100%">12</div><div style="height:33%">4</div><div style="height:17%">2</div><div style="height:8%">1</div></div>'
+    + '<small>Last six weeks. Worth a check-in, or review '+P.p+' recent misses below.</small>';
+}
+function renderSupport(){
+  var q = misses.filter(function(m){return m.route==='support' && m.status==='requested';}), r = '';
+  q.forEach(function(m){ r += '<tr><td>'+P.name+' (no handler)</td><td>'+m.when+'</td><td>'+m.reason+'</td><td><button onclick="supportDecide('+m.id+',true)">Approve</button> <button onclick="supportDecide('+m.id+',false)">Decline</button></td></tr>'; });
+  $('support-rows').innerHTML = r; $('support-empty').style.display = q.length ? 'none' : '';
+}
+
+function applyEvent(t){
+  if (t==='taken'){ newScore += 0.08; oldScore += 0.08; }
+  if (t==='down'){ newScore -= 0.12; oldScore -= 0.12; }
+  if (t==='miss'){ newScore -= 0.04; oldScore -= 0.12; }
+  newScore = clamp(newScore, 0.2, 1); oldScore = clamp(oldScore, 0, 1);
+}
+function reverseNew(){ newScore = clamp(newScore + 0.04, 0.2, 1); }
+function advanceWeek(){ week++; fire(['R22',E1]); newScore += (0.5 - newScore) * 0.2; audit.push('Week '+week+' passed: proposed score eased toward neutral (live rules have no recovery).'); render(); }
+
+function sendPing(reentry){
+  if (timer) return;
+  var left = 60, grace = false, graceUsed = false;
+  graceOn = false; curReentry = !!reentry; fire(reentry ? ['R7','R8','R23'] : ['R7','R8']);
+  var title = reentry ? 'Re-entry callout' : 'New callout';
+  var extra = reentry ? '<p style="color:#b45309;font-size:13px">'+tagNew(3)+' You haven\'t been asked for a while. You are close to this one and have the tags it needs.</p>' : '';
+  $('phone-body').innerHTML = '<div class="ping"><h2>'+title+'</h2><p>'+P.ping+'</p>'+extra
+    + '<div class="ring new" id="ring"></div><p id="left-label">seconds left '+tagNew(1)+'</p>'
+    + '<button class="btn green" onclick="answer(\'taken\')">Take it</button><button class="btn plain" onclick="answer(\'down\')">Turn down</button>'
+    + (rel>=2 ? '<p style="font-size:12px">'+tagNew(2)+' Opened before time runs out? You get 15 more seconds.</p>' : '')
+    + '<p style="font-size:12px;margin-top:10px">Demo shortcut: <a href="#" onclick="skip();return false;">skip to the last 5 seconds</a></p></div>';
+  function paint(){ var r=$('ring'); if(!r) return; r.textContent = left; var c = grace ? '#b45309' : (left<=10 ? '#dc2626' : '#2563eb'); r.style.border='8px solid '+c; r.style.color=c; }
+  paint();
+  window._skip = function(){ left = 5; paint(); };
+  timer = setInterval(function(){
+    left--; paint();
+    if (left<=0) {
+      if (rel>=2 && !graceUsed) { graceUsed = true; grace = true; graceOn = true; fire(['R12']); left = 15; $('left-label').innerHTML = 'extra seconds — you had already opened it '+tagNew(2); toast('Opened-ping grace: 15 more seconds.'); paint(); }
+      else endPing('missed');
+    }
+  }, 1000);
+  render();
+}
+function skip(){ if (window._skip) window._skip(); }
+function endPing(kind){
+  clearInterval(timer); timer = null; totalPings++; graceOn = false; curReentry = false; fire([E1, E2]);
+  if (kind==='missed') {
+    applyEvent('miss');
+    misses.push({id:nextId++, when:'Just now', opened:true, status:'counted', reason:'', route:'handler'});
+    toast('That ping timed out. It is counted as a miss, not a turn-down.');
+    screen = 'missed';
+  } else {
+    applyEvent(kind==='taken' ? 'taken' : 'down');
+    toast(kind==='taken' ? 'Taken. It is yours.' : 'Turned down. That keeps the full turn-down cost.');
+    screen = 'home';
+  }
+  render();
+}
+function answer(k){ endPing(k); }
+function unseenPing(){
+  if (timer) return;
+  totalPings++; noOpened++; fire(['R11', E1, E2]);
+  oldScore = clamp(oldScore - 0.12, 0, 1);
+  var m = {id:nextId++, when:'Just now', opened:false, status:'counted', reason:'', route:'handler'};
+  if (100*noOpened/totalPings <= X) { m.status='rev-auto'; toast('Never opened and under the limit, so it was reversed automatically.'); }
+  else { newScore = clamp(newScore - 0.04, 0.2, 1); toast('Never opened, but no-opened misses are over '+X+'%. Not reversed automatically; '+P.s+' can ask for a review.'); }
+  misses.push(m); screen = 'missed'; render();
+}
+function openSheet(id){ reviewId=id; var m=misses.filter(function(x){return x.id===id;})[0]; $('sheet-when').textContent=m.when; $('sheet-wrap').className='overlay on'; }
+function closeSheet(){ $('sheet-wrap').className='overlay'; }
+function submitReview(){
+  var why = document.querySelector('input[name=why]:checked').value, note=$('why-note').value.trim();
+  var m = misses.filter(function(x){return x.id===reviewId;})[0];
+  m.status='requested'; m.reason = why + (note?': '+note:'');
+  m.route = (rel>=2 && !hasHandler) ? 'support' : 'handler';
+  $('why-note').value=''; closeSheet(); fire(rel>=2 ? ['R10','R16',E2] : ['R10',E2]);
+  toast(m.route==='support' ? 'Sent to the support team. See the Support review queue tab.' : 'Sent to '+P.handler+'. See the handler console tab.');
+  render();
+}
+
+function markLegit(id){
+  var m = misses.filter(function(x){return x.id===id;})[0];
+  if (excuses>=5) return;
+  m.status='rev-handler'; excuses++; reverseNew(); fire(['R15','R18',E1,E2]);
+  audit.push(P.handler+' marked the '+m.when+' miss legit. Full reversal.');
+  toast('Reversed in full and logged. '+P.name+' sees it on '+P.p+' phone.'); render();
+}
+function supportDecide(id, ok){
+  var m = misses.filter(function(x){return x.id===id;})[0];
+  fire(ok ? ['R16','R15',E1,E2] : ['R16',E2]);
+  if (ok) { m.status='rev-handler'; reverseNew(); audit.push('Support approved the '+m.when+' request. Full reversal.'); toast('Approved and reversed in full.'); }
+  else { m.status='declined'; audit.push('Support declined the '+m.when+' request.'); toast('Declined.'); }
+  render();
+}
+function setX(v){
+  X = clamp(Number(v)||0, 0, 100); fire(['R11',E2]);
+  $('x-status').textContent = 'Saved: ' + X + '% (live).';
+  audit.push('Auto-reversal limit set to '+X+'%.'); render();
+}
+P = PERSONAS.mite; view = 'console'; resetDemo(); showView('console');
+</script>
+</body>
+</html>

@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Rook Dispatch — before and after storyboard</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: Segoe UI, Arial, sans-serif; background: #eef0f3; color: #1b1f24; }
+  header { background: #1b1f24; color: #fff; padding: 16px 24px; }
+  header h1 { margin: 0 0 4px; font-size: 20px; } header p { margin: 0; font-size: 13px; opacity: .85; }
+  nav.toc { background: #fff; border-bottom: 1px solid #d1d5db; padding: 8px 24px; font-size: 13px; position: sticky; top: 0; z-index: 3; }
+  nav.toc a { margin-right: 16px; color: #2563eb; text-decoration: none; font-weight: 600; }
+  main { max-width: 1400px; margin: 0 auto; padding: 16px 24px 60px; }
+  .legend { background: #fff; border: 1px solid #d1d5db; border-radius: 8px; padding: 10px 14px; font-size: 13px; margin-bottom: 20px; }
+  .rt { display: inline-block; font-size: 11px; font-weight: 700; padding: 1px 7px; border-radius: 9px; margin-right: 4px; color: #fff; }
+  .rt.today { background: #6b7280; } .rt.A { background: #2563eb; } .rt.B { background: #7c3aed; } .rt.C { background: #b45309; }
+  section.scn { margin-bottom: 44px; }
+  section.scn h2 { margin: 0; font-size: 20px; }
+  section.scn .who { color: #4b5563; font-size: 13px; margin: 2px 0 12px; }
+  .lane { border-radius: 10px; padding: 10px 12px 14px; margin-bottom: 14px; }
+  .lane.before { background: #fef2f2; border: 1px solid #fecaca; }
+  .lane.after { background: #f0fdf4; border: 1px solid #bbf7d0; }
+  .lane h3 { margin: 0 0 8px; font-size: 13px; text-transform: uppercase; letter-spacing: .05em; }
+  .lane.before h3 { color: #991b1b; } .lane.after h3 { color: #166534; }
+  .row { display: flex; gap: 12px; overflow-x: auto; padding-bottom: 6px; }
+  .panel { flex: 0 0 270px; background: #fff; border: 1px solid #d1d5db; border-radius: 10px; padding: 10px; display: flex; flex-direction: column; }
+  .panel .n { font-size: 11px; color: #6b7280; font-weight: 700; display: flex; justify-content: space-between; }
+  .panel .cap { font-size: 13px; margin: 4px 0 8px; min-height: 52px; }
+  .panel .shot { background: #f3f4f6; border-radius: 8px; padding: 8px; display: flex; justify-content: center; align-items: flex-start; min-height: 300px; }
+  .panel .shot.wide { align-items: center; }
+  .feel { margin-top: 8px; font-size: 12px; display: flex; align-items: center; gap: 6px; }
+  .feel i { width: 12px; height: 12px; border-radius: 50%; display: inline-block; }
+  .f1 { background: #dc2626; } .f2 { background: #f97316; } .f3 { background: #eab308; } .f4 { background: #84cc16; } .f5 { background: #16a34a; }
+  .fl { color: #4b5563; }
+  /* mini phone */
+  .mp { width: 188px; height: 290px; background: #fff; border: 6px solid #1b1f24; border-radius: 22px; overflow: hidden; font-size: 10.5px; display: flex; flex-direction: column; }
+  .mp .bar { background: #1e3a5f; color: #fff; padding: 7px 9px; font-weight: 600; }
+  .mp .bar small { display: block; font-weight: 400; opacity: .8; font-size: 9px; }
+  .mp .b { flex: 1; padding: 8px; overflow: hidden; }
+  .mp .tabs { display: flex; border-top: 1px solid #d1d5db; font-size: 9.5px; } .mp .tabs span { flex: 1; text-align: center; padding: 6px 0; background: #f9fafb; } .mp .tabs .on { background: #dbeafe; font-weight: 700; }
+  .mp .c { border: 1px solid #d1d5db; border-radius: 6px; padding: 5px 6px; margin-bottom: 5px; }
+  .mp .ring { width: 74px; height: 74px; border-radius: 50%; margin: 8px auto; display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: 700; }
+  .mp .bt { border-radius: 5px; padding: 6px; text-align: center; margin-top: 5px; font-weight: 600; }
+  .mp .g { background: #15803d; color: #fff; } .mp .p { background: #e5e7eb; } .mp .bl { background: #2563eb; color: #fff; }
+  .mp .big { text-align: center; font-size: 12px; font-weight: 700; margin-top: 24px; color: #4b5563; }
+  .pl { display: inline-block; font-size: 8.5px; padding: 1px 6px; border-radius: 8px; margin-top: 3px; }
+  .pl.red { background: #fee2e2; color: #991b1b; } .pl.grn { background: #dcfce7; color: #166534; } .pl.yel { background: #fef3c7; color: #92400e; } .pl.gry { background: #e5e7eb; color: #374151; }
+  .gau { height: 7px; border-radius: 4px; background: #e5e7eb; margin: 4px 0; overflow: hidden; } .gau div { height: 100%; background: #2563eb; }
+  /* mini console */
+  .mc { width: 100%; background: #fff; border: 1px solid #d1d5db; border-radius: 6px; font-size: 10.5px; overflow: hidden; }
+  .mc .t { background: #1e3a5f; color: #fff; padding: 6px 8px; font-weight: 600; }
+  .mc .i { padding: 7px; }
+  .mc .cards { display: flex; gap: 6px; margin-bottom: 6px; } .mc .rc { flex: 1; border: 2px solid #d1d5db; border-radius: 6px; padding: 5px; } .mc .rc.sel { border-color: #2563eb; background: #eff6ff; }
+  .mc .rc b { font-size: 16px; display: block; }
+  .mc table { width: 100%; border-collapse: collapse; } .mc th, .mc td { text-align: left; padding: 3px 4px; border-bottom: 1px solid #e5e7eb; font-size: 9.5px; } .mc th { background: #f3f4f6; }
+  .mc .al { background: #fef2f2; border: 1px solid #fecaca; border-radius: 5px; padding: 5px 6px; margin-bottom: 6px; }
+  .mc .bars { display: flex; align-items: flex-end; gap: 3px; height: 28px; margin: 4px 0; } .mc .bars div { width: 14px; background: #2563eb; }
+  .mc .bt { display: inline-block; border: 1px solid #9ca3af; border-radius: 4px; padding: 1px 6px; background: #f3f4f6; }
+  .mc .nt { color: #6b7280; font-style: italic; }
+  .txt { background: #fff; border: 1px solid #d1d5db; border-radius: 8px; padding: 10px; font-size: 12px; width: 100%; }
+  .txt .bub { background: #dbeafe; border-radius: 10px; padding: 6px 9px; margin: 4px 0; }
+  .txt .bub.r { background: #e5e7eb; }
+  .note { font-size: 12px; color: #4b5563; margin-top: 14px; }
+  @media print { nav.toc { display: none; } .row { flex-wrap: wrap; } }
+</style>
+</head>
+<body>
+<header>
+  <h1>Rook Dispatch — what changes, from the person it happens to</h1>
+  <p>Before and after storyboards for four situations. Screens are mock-ups drawn from the prototype, with illustrative figures. Not clickable.</p>
+</header>
+<nav class="toc">
+  <a href="#s1">1 · The race to the stairs</a><a href="#s2">2 · The quiet phone</a><a href="#s3">3 · A miss that wasn't their fault</a><a href="#s4">4 · No handler to ask</a>
+</nav>
+<main>
+  <div class="legend"><strong>Key:</strong>
+    <span class="rt today">TODAY</span> how it works now (4.2) ·
+    <span class="rt A">A</span> Release A: fairer scoring, countdown, Missed pings, review, handler excuse ·
+    <span class="rt B">B</span> Release B: opened-ping grace, standing card, support queue, weekly report ·
+    <span class="rt C">C</span> Release C: quiet-responder alert, re-entry ping.
+    The dot under each panel is how the person feels: <span class="feel" style="display:inline-flex"><i class="f1"></i> bad</span> to <span class="feel" style="display:inline-flex"><i class="f5"></i> good</span>.
+  </div>
+  <div id="out"></div>
+  <p class="note">Release letters are placeholders; Helen and Marcus set the real release numbers. Ping counts, percentages and The Gale's activity are illustrative, drawn from the pattern in the 4.2 data. Responder and handler names are the fictional ones from the research.</p>
+</main>
+
+<script>
+/* ---------- mini screens ---------- */
+function phone(name, area, body, tab){
+  return '<div class="mp"><div class="bar">'+name+'<small>'+area+'</small></div><div class="b">'+body+'</div>'
+   + '<div class="tabs"><span class="'+(tab==='home'?'on':'')+'">Home</span><span class="'+(tab==='missed'?'on':'')+'">Missed pings</span></div></div>';
+}
+function ring(n, col){ return '<div class="ring" style="border:6px solid '+col+';color:'+col+'">'+n+'</div>'; }
+var ping = {
+  before: function(n,a){ return phone(n,a,'<b style="font-size:12px">New callout</b><div>Callout · '+a+' · about 12 min away</div><div class="big" style="margin-top:14px">(no timer)</div><div class="bt g">Take it</div><div class="bt p">Turn down</div>','home'); },
+  gone: function(n,a){ return phone(n,a,'<div class="big">This callout is no longer available</div><div style="text-align:center;margin-top:10px;color:#6b7280">It has gone to someone else.</div>','home'); },
+  count: function(n,a,sec,col,extra){ return phone(n,a,'<b style="font-size:12px">New callout</b><div>Callout · '+a+' · about 12 min away</div>'+(extra||'')+ring(sec,col)+'<div style="text-align:center;color:#6b7280">seconds left</div><div class="bt g">Take it</div><div class="bt p">Turn down</div>','home'); },
+  quietHome: function(n,a){ return phone(n,a,'You are <b>available</b> for callouts.<div class="c" style="margin-top:8px;color:#6b7280">No callouts today.<br>No callouts yesterday.<br>No callouts this week.</div>','home'); },
+  standing: function(n,a,label,pct,msg){ return phone(n,a,'You are <b>available</b> for callouts.<div class="c" style="border:2px dashed #f59e0b"><b>Your standing: '+label+'</b><div class="gau"><div style="width:'+pct+'%"></div></div>'+msg+'</div><div class="c">Missed a ping? Look it up under <b>Missed pings</b>.</div>','home'); },
+  missed: function(n,a,items){ return phone(n,a,'<div style="color:#4b5563;margin-bottom:5px">A miss costs less than turning a ping down.</div>'+items,'missed'); },
+  sheet: function(n,a){ return phone(n,a,'<b>Ask for a review</b><div style="margin:4px 0">What happened with the Thu 19:05 ping?</div><div class="c">&#9679; Phone problem</div><div class="c">&#9675; Didn\'t see it</div><div class="c">&#9675; Wasn\'t available</div><div class="c" style="color:#9ca3af">Optional short note</div><div class="bt bl">Send request</div>','missed'); }
+};
+function miss(when, opened, pill){ return '<div class="c"><b>'+when+'</b><br>'+(opened?'You opened it but it timed out.':'It never reached your screen.')+'<br>'+pill+'</div>'; }
+var P = {
+  red: '<span class="pl red">Counted against you</span>', grn: function(t){ return '<span class="pl grn">'+t+'</span>'; },
+  yel: function(t){ return '<span class="pl yel">'+t+'</span>'; }
+};
+function console_(title, inner){ return '<div class="mc"><div class="t">'+title+'</div><div class="i">'+inner+'</div></div>'; }
+function cards(mainSel, mainBig, mainLabel, otherBig){
+  return '<div class="cards"><div class="rc sel"><b style="color:#b45309">'+mainBig+'</b>Meteor Mite<br>'+mainLabel+'</div><div class="rc"><b style="color:#166534">'+otherBig+'</b>The Gale<br>pings this week</div></div>';
+}
+function missTable(rows){ return '<table><tr><th>When</th><th>Opened?</th><th>Status</th><th></th></tr>'+rows+'</table>'; }
+function chat(lines){ return '<div class="txt">'+lines.map(function(l){ return '<div class="bub'+(l[0]==='r'?' r':'')+'"><b>'+l[1]+':</b> '+l[2]+'</div>'; }).join('')+'</div>'; }
+function queue(rows){ return console_('Support review queue', '<table><tr><th>Responder</th><th>When</th><th>Reason</th><th></th></tr>'+rows+'</table>'); }
+
+/* ---------- scenarios ---------- */
+/* panel: [release tag, caption, screen html, feel 1-5, feel label, wide?] */
+var S = [
+ { id:'s1', title:'1 · The race to the stairs', who:'Vesper (Old Town) and handler Aunt Dot. Vesper is upstairs when a callout comes in; Aunt Dot hears the buzz through the ceiling.',
+  before:[
+   ['today','The phone buzzes upstairs while Aunt Dot is in the kitchen. Vesper has 60 seconds, not 90, and nothing on the screen tells him how long is left.', ping.before('Vesper','Old Town'),2,'Rushed'],
+   ['today','He takes the stairs two at a time. By the time his thumb is on the screen, the ping has gone to someone else.', ping.gone('Vesper','Old Town'),1,'Gutted'],
+   ['today','It counts as a miss, and a miss costs the same as turning down: -0.12. Lower score, later in the list, fewer pings. He asks nobody, because nobody can see it.', phone('Vesper','Old Town','<div class="big" style="margin-top:12px">Your pings this week</div><div style="text-align:center;font-size:30px;font-weight:700;color:#b45309">3</div><div style="text-align:center;color:#6b7280">no reason shown</div>','home'),1,'Quiet and unexplained'],
+   ['today','Aunt Dot only knows because she is cooking for him more often. The console shows her nothing about it.', console_('Handler console: Vesper','<div class="al" style="background:#f3f4f6;border-color:#d1d5db">No missed-ping view. No alert.</div><div class="nt">(nothing to see)</div>'),1,'Guessing',true]
+  ],
+  after:[
+   ['A','The ping now shows a countdown, so he can see how long is left (38 seconds).', ping.count('Vesper','Old Town',38,'#2563eb'),3,'Under pressure but informed'],
+   ['B','He reaches the phone with 4 seconds left and opens the ping. Because he opened it before time ran out, he gets 15 more seconds to read it and answer. (If he had not reached the phone in time, there would be no extra time.)', ping.count('Vesper','Old Town',9,'#b45309','<div style="color:#b45309;font-size:9.5px;text-align:center">Extra seconds: you had already opened it</div>'),4,'Relief'],
+   ['A','If it still times out, it is recorded as a miss, not a turn-down. It costs about a third as much, and his score eases back over time.', phone('Vesper','Old Town',miss('Today 19:05',true,P.red),'missed'),3,'Fair'],
+   ['B','His home screen explains it in plain words: his standing is rebuilding, and taking a ping lifts it.', ping.standing('Vesper','Old Town','Building back',20,'Recent misses count for less than turning pings down. Taking a ping lifts it.'),4,'Understood']
+  ]},
+ { id:'s2', title:'2 · The quiet phone', who:'Meteor Mite (Eastgate) and handler Kip. Kip also looks after The Gale, who has not stopped all week.',
+  before:[
+   ['today','After 4.2, Meteor Mite goes from about 12 pings a week to about 1. Her phone just sits there.', ping.quietHome('Meteor Mite','Eastgate'),1,'Forgotten'],
+   ['today','She texts Kip: is something broken? Kip has nothing better than "hang in there".', chat([['r','Meteor Mite','Is something broken? Nothing has come in all week.'],['b','Kip','Hang in there, it\'ll pick up.']]),1,'Powerless'],
+   ['today','Kip sees two cards that look like two different products. Nothing says why.', console_('Your responders',cards(1,'~1','pings this week','~20')+'<div class="nt">No explanation.</div>'),1,'Confused',true],
+   ['today','The loop: a miss lowers her score, a lower score puts her later in the list, later in the list means fewer pings, and her score can only rise when she is pinged. It floors at 0 and never recovers.', phone('Meteor Mite','Eastgate','<div class="big">Score floor: 0</div><div style="text-align:center;color:#6b7280;margin-top:6px">Nothing raises it, because nothing pings her.</div>','home'),1,'Stuck']
+  ],
+  after:[
+   ['A','The engine changes behind the scenes: a miss costs less, scores ease back toward neutral, and the floor is raised so nobody sits at zero. She starts to be pinged again.', phone('Meteor Mite','Eastgate','<div class="big">(no new screen)</div><div style="text-align:center;color:#6b7280;margin-top:6px">Pings creep back as her score eases up.</div>','home'),3,'Slowly better'],
+   ['B','Her home screen shows "Your standing: Building back", with what to do next. She stops wondering if something is broken.', ping.standing('Meteor Mite','Eastgate','Building back',22,'Recent misses count for less. Taking a ping lifts it.'),4,'Informed'],
+   ['C','Kip gets an alert that names her: pings down from about 12 a week to about 1, and The Gale is busier. Now it looks like a pattern.', console_('Your responders',cards(1,'~1','pings this week','~20')+'<div class="al"><b>Quiet-responder alert</b><br>Meteor Mite\'s pings fell from ~12 a week to ~1.<div class="bars"><div style="height:100%"></div><div style="height:92%"></div><div style="height:100%"></div><div style="height:33%"></div><div style="height:17%"></div><div style="height:8%"></div></div></div>'),4,'Has something to say',true],
+   ['C','A re-entry ping arrives: she is close, and has the tags it needs. It is a way back into the order, not a gift.', ping.count('Meteor Mite','Eastgate',46,'#2563eb','<div style="color:#b45309;font-size:9.5px">Re-entry callout: you are close and have what it needs.</div>'),5,'Back in']
+  ]},
+ { id:'s3', title:'3 · A miss that wasn\'t their fault', who:'Meteor Mite and handler Kip. Her phone lost signal in a stairwell during a ping.',
+  before:[
+   ['today','The ping times out while Meteor Mite is in a stairwell with no signal. It becomes a miss.', ping.gone('Meteor Mite','Eastgate'),2,'Unlucky'],
+   ['today','It lowers her score exactly like a refusal. There is nowhere in the app to see it, and nothing to do about it.', phone('Meteor Mite','Eastgate','<div class="big">(nothing to see)</div>','home'),1,'Powerless'],
+   ['today','Kip cannot see it either. Even if she told him, he has no way to undo it.', console_('Your responders','<div class="nt">No missed-ping list. No excuse button.</div>'),1,'Shrugs',true]
+  ],
+  after:[
+   ['A','Later she opens Missed pings herself and finds it. The app does not nag her about it; it is up to her to look.', phone('Meteor Mite','Eastgate',miss('Thu 15 Oct, 19:05',true,P.red)+'<div class="bt p" style="font-size:9.5px">Ask for a review</div>','missed'),3,'Finds it'],
+   ['A','She picks "Phone problem" and sends a request.', ping.sheet('Meteor Mite','Eastgate'),3,'Taking responsibility'],
+   ['A','Kip sees the miss and her reason in his console, and marks it legit. It is reversed in full and written to the audit log.', console_('Your responders — Meteor Mite',missTable('<tr><td>Thu 19:05</td><td>Yes</td><td>Review requested</td><td><span class="bt">Mark legit</span></td></tr>')+'<div class="nt" style="margin-top:5px">Audit: Kip marked the miss legit. Full reversal.</div>'),4,'Fixes it in a click',true],
+   ['A','She sees it reversed on her phone.', phone('Meteor Mite','Eastgate',miss('Thu 15 Oct, 19:05',true,P.grn('Reversed in full')),'missed'),5,'Fair']
+  ]},
+ { id:'s4', title:'4 · No handler to ask', who:'A responder with no handler (illustrative). Some responders have nobody to excuse a miss.',
+  before:[
+   ['today','A ping never reaches the phone. It is recorded as a miss.', ping.gone('Responder','—'),2,'Annoyed'],
+   ['today','There is no handler to ask and no process. The penalty stays.', phone('Responder','—','<div class="big">(nothing to see)</div><div style="text-align:center;color:#6b7280;margin-top:6px">No one to tell.</div>','home'),1,'Stuck']
+  ],
+  after:[
+   ['A','If the ping never reached the screen, there is no opened record, so the miss is reversed automatically. The responder sees why.', phone('Responder','—',miss('Wed 02:40',false,P.grn('Reversed: the ping never reached your screen')),'missed'),4,'Fairly treated'],
+   ['A','If such misses pile up past the limit (X%, adjustable any time without a release), they stop being reversed automatically and go through review. This guards against gaming it.', console_('Admin setting','Auto-reversal limit (X): <span class="bt">25 %</span><br><span class="nt">Changes take effect now. No release needed.</span>'),3,'Fair, with a guardrail',true],
+   ['B','With no handler, the review request goes to the support team\'s queue.', phone('Responder','—','<div style="color:#4b5563;margin-bottom:5px">Review sent to support.</div>'+miss('Thu 19:05',true,P.yel('Review requested · with support')),'missed'),3,'Heard'],
+   ['B','Support approves it. Reversed in full.', queue('<tr><td>Responder</td><td>Thu 19:05</td><td>Phone problem</td><td><span class="bt">Approve</span> <span class="bt">Decline</span></td></tr>'),5,'Resolved',true]
+  ]}
+];
+var FEEL = ['','f1','f2','f3','f4','f5'];
+function panelHtml(p, i){
+  return '<div class="panel"><div class="n"><span>STEP '+(i+1)+'</span><span class="rt '+p[0]+'">'+(p[0]==='today'?'TODAY':'RELEASE '+p[0])+'</span></div>'
+    + '<div class="cap">'+p[1]+'</div><div class="shot '+(p[5]?'wide':'')+'">'+p[2]+'</div>'
+    + '<div class="feel"><i class="'+FEEL[p[3]]+'"></i><span class="fl">'+p[4]+'</span></div></div>';
+}
+var html = '';
+S.forEach(function(s){
+  html += '<section class="scn" id="'+s.id+'"><h2>'+s.title+'</h2><div class="who">'+s.who+'</div>'
+   + '<div class="lane before"><h3>Before: how it works today (4.2)</h3><div class="row">'+s.before.map(panelHtml).join('')+'</div></div>'
+   + '<div class="lane after"><h3>After: with the releases</h3><div class="row">'+s.after.map(panelHtml).join('')+'</div></div></section>';
+});
+document.getElementById('out').innerHTML = html;
+</script>
+</body>
+</html>
