@@ -1,0 +1,863 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rook Dispatch 4.2 — what happened, what we do about it</title>
+<style>
+:root{--bg:#0f1319;--panel:#171d26;--panel2:#1f2733;--ink:#e8ecf1;--mute:#93a0b1;--amber:#f59e0b;--red:#ef4444;--green:#34d399;--blue:#60a5fa;--line:#2b3544}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 "Segoe UI",system-ui,Arial,sans-serif}
+a{color:var(--blue)}
+nav{position:sticky;top:0;z-index:20;background:#0f1319ee;backdrop-filter:blur(6px);border-bottom:1px solid var(--line);display:flex;gap:4px;padding:8px 16px;overflow-x:auto;align-items:center}
+nav b{margin-right:12px;white-space:nowrap}
+nav a{color:var(--mute);text-decoration:none;padding:5px 10px;border-radius:14px;font-size:13px;white-space:nowrap}
+nav a:hover,nav a.on{background:var(--panel2);color:var(--ink)}
+section{max-width:1060px;margin:0 auto;padding:64px 20px 24px}
+h1{font-size:clamp(34px,6vw,60px);line-height:1.05;margin:0 0 16px;letter-spacing:-.02em}
+h2{font-size:30px;margin:0 0 6px;letter-spacing:-.01em}
+h3{margin:0 0 6px;font-size:17px}
+.eyebrow{color:var(--amber);font-size:12px;letter-spacing:.14em;text-transform:uppercase;font-weight:700}
+.lede{font-size:19px;color:#c9d2de;max-width:760px}
+.hero{padding-top:80px}
+.hero em{color:var(--amber);font-style:normal}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;margin:30px 0}
+.stat{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px}
+.stat .n{font-size:40px;font-weight:800;line-height:1}
+.stat .l{color:var(--mute);font-size:13px;margin-top:6px}
+.red{color:var(--red)}.amber{color:var(--amber)}.green{color:var(--green)}.blue{color:var(--blue)}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:20px;margin:16px 0}
+.reveal{opacity:0;transform:translateY(18px);transition:.6s}
+.reveal.in{opacity:1;transform:none}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media(max-width:760px){.grid2{grid-template-columns:1fr}}
+/* chart */
+.chart{display:flex;align-items:flex-end;gap:8px;height:220px;padding:10px 0 0;border-bottom:1px solid var(--line);position:relative}
+.col{flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;height:100%}
+.bar{width:100%;border-radius:6px 6px 0 0;background:var(--blue);height:0;transition:height 1s cubic-bezier(.2,.8,.2,1);position:relative}
+.bar.bad{background:var(--red)}
+.bar span{position:absolute;top:-20px;width:100%;text-align:center;font-size:12px;font-weight:700}
+.xl{display:flex;gap:8px;margin-top:6px}.xl div{flex:1;text-align:center;font-size:11px;color:var(--mute)}
+.marker{position:absolute;left:0;right:0;border-top:1px dashed var(--amber);font-size:11px;color:var(--amber)}
+.tog{display:inline-flex;background:var(--panel2);border-radius:8px;padding:3px;margin:8px 0}
+.tog button{background:none;border:0;color:var(--mute);padding:6px 14px;border-radius:6px;cursor:pointer;font-size:14px;font-weight:600}
+.tog button.on{background:var(--amber);color:#111}
+/* loop */
+.loop{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:center;margin:12px 0}
+.node{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:10px 14px;font-size:14px;max-width:190px;text-align:center}
+.arr{color:var(--red);font-size:22px}
+.loop.run .node{animation:pulse 4s infinite}
+.loop.run .node:nth-child(3){animation-delay:.5s}.loop.run .node:nth-child(5){animation-delay:1s}.loop.run .node:nth-child(7){animation-delay:1.5s}.loop.run .node:nth-child(9){animation-delay:2s}
+@keyframes pulse{0%,60%,100%{border-color:var(--line)}20%{border-color:var(--red);box-shadow:0 0 14px #ef444466}}
+/* timeline */
+.tl{border-left:3px solid var(--line);margin-left:8px;padding-left:22px}
+.tl .ev{position:relative;margin:0 0 18px}
+.tl .ev:before{content:"";position:absolute;left:-30px;top:6px;width:13px;height:13px;border-radius:50%;background:var(--blue);border:3px solid var(--bg)}
+.tl .ev.hot:before{background:var(--red)}
+.tl .when{color:var(--mute);font-size:13px}
+/* module tabs */
+.mods{display:flex;flex-wrap:wrap;gap:8px;margin:18px 0}
+.mods button{background:var(--panel);border:1px solid var(--line);color:var(--ink);padding:9px 14px;border-radius:10px;cursor:pointer;font-size:14px}
+.mods button.on{background:var(--amber);color:#111;border-color:var(--amber);font-weight:700}
+.mod{display:none}.mod.on{display:block;animation:fade .4s}
+@keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1}}
+.prompt{background:#0b0f14;border:1px solid var(--line);border-left:4px solid var(--amber);border-radius:8px;padding:14px 16px;font-family:Consolas,monospace;font-size:13.5px;white-space:pre-wrap;color:#fcd9a0}
+.plabel{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--mute);margin:14px 0 6px;font-weight:700}
+.found{border-left:4px solid var(--green);background:var(--panel2);border-radius:8px;padding:14px 16px}
+.tag{display:inline-block;background:var(--panel2);border:1px solid var(--line);border-radius:10px;font-size:11px;padding:1px 8px;color:var(--mute);margin-left:6px;vertical-align:middle}
+/* score bars */
+.sb{display:flex;align-items:center;gap:10px;margin:8px 0;font-size:14px}
+.sb .lab{width:150px;color:var(--mute)}
+.sb .trk{flex:1;background:var(--panel2);border-radius:6px;height:22px;overflow:hidden}
+.sb .fill{height:100%;width:0;transition:width 1s;display:flex;align-items:center;padding-left:8px;font-size:12px;font-weight:700;color:#111}
+iframe{width:100%;height:780px;border:1px solid var(--line);border-radius:12px;background:#fff}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th,td{padding:8px 10px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+th{color:var(--mute);font-weight:600}
+.pass{color:var(--green);font-weight:700}.part{color:var(--amber);font-weight:700}.fail{color:var(--red);font-weight:700}
+.caveat li{margin:6px 0}
+footer{max-width:1060px;margin:40px auto;padding:20px;color:var(--mute);font-size:13px;border-top:1px solid var(--line)}
+</style>
+</head>
+<body>
+<nav>
+  <b>Rook Dispatch · 4.2</b>
+  <a href="#what">What happened</a><a href="#evidence">Evidence</a><a href="#loop">Why</a><a href="#journey">Prompts &amp; findings</a><a href="#fix">The fix</a><a href="#skill">The skill</a><a href="#open">Still open</a>
+</nav>
+
+<section class="hero" id="top">
+  <div class="eyebrow">Rook Dispatch · Final report · Claude Code for PMs</div>
+  <h1>Release 4.2 didn't have a quiet August.<br>It taught four responders <em>we'd stopped asking</em>.</h1>
+  <p class="lede">On 12 August we cut the ping wait from 90s to 60s and shifted routing weight toward proximity. Misses and tickets stepped up the same day. The numbers recovered on paper, but mostly because four responders were being pinged almost never. This report shows how I found that, what I propose, and how a reusable check keeps the next brief from repeating it.</p>
+  <div class="stats">
+    <div class="stat"><div class="n red" data-n="54" data-suf="%">0</div><div class="l">acceptance in release week, after six weeks at 75–78%</div></div>
+    <div class="stat"><div class="n amber" data-n="21.5" data-suf="%" data-dec="1">0</div><div class="l">of pings missed at peak, up from ~2%</div></div>
+    <div class="stat"><div class="n red" data-n="49" data-suf=" → 3">0</div><div class="l">weekly pings to the four responders, before vs three weeks after</div></div>
+    <div class="stat"><div class="n amber" data-n="4" data-suf="×">0</div><div class="l">support tickets a week (about 6 → 28); 83 of 107 still open</div></div>
+  </div>
+</section>
+
+<section id="what">
+  <div class="eyebrow">What happened</div>
+  <h2>In plain words</h2>
+  <div class="tl reveal">
+    <div class="ev"><div class="when">Before 12 Aug</div><b>Healthy.</b> Acceptance 75–78% for six weeks. Missed pings ~2%. All 16 responders at 69–85%; the four who later vanished were not chronic decliners (69–81%, 0–4% missed).</div>
+    <div class="ev hot"><div class="when">12 Aug · release 4.2</div><b>Two changes ship together:</b> ping wait 90s → 60s, and routing weights shift (proximity 0.45 → 0.60, recent acceptance 0.40 → 0.25).</div>
+    <div class="ev hot"><div class="when">12–14 Aug</div><b>Misses begin at once:</b> 14 of 21 pings missed, against 1 of 51 on 5–11 Aug.</div>
+    <div class="ev"><div class="when">From ~18 Aug</div><b>Ping volume to four responders collapses.</b> A missed ping costs the same −0.12 as a turn-down; only a <i>taken</i> ping gives +0.08 back; you can't take what you aren't offered.</div>
+    <div class="ev"><div class="when">Late Aug – Sept</div><b>Aggregate acceptance "recovers" (46.8% → 72.7%)</b> because the four are barely pinged. Tickets keep rising (32 in the week of 24 Aug).</div>
+  </div>
+  <div class="card reveal"><b>The previous call was "seasonal dip, don't revert."</b> The data doesn't support it: acceptance, misses and tickets all step on the release day, turn-downs stay flat. Prior-year seasonality is untested, so the claim is "not supported", not "disproved".</div>
+</section>
+
+<section id="evidence">
+  <div class="eyebrow">Evidence · pings table, 29 Jun – 6 Sep</div>
+  <h2>The number that moved, and the one that hid it</h2>
+  <div class="grid2">
+    <div class="card reveal">
+      <h3>Weekly acceptance rate</h3>
+      <div class="chart" id="c1"></div><div class="xl" id="x1"></div><p style="color:var(--mute);font-size:12px;margin:8px 0 0">Weeks from 10 Aug onward are the reported figures (54, 66, 67, 73). The six earlier weeks were reported as a 75–78% band; bar heights within it are illustrative. *Week of 10 Aug mixes before and after (release Wed 12 Aug).</p>
+    </div>
+    <div class="card reveal">
+      <h3>Pings per week to the four <span class="tag">vs. the other 12</span></h3>
+      <div class="sb"><span class="lab">The four · week 1</span><div class="trk"><div class="fill" data-w="100%" style="background:var(--blue)">31</div></div></div>
+      <div class="sb"><span class="lab">The four · week 2</span><div class="trk"><div class="fill" data-w="52%" style="background:var(--amber)">16</div></div></div>
+      <div class="sb"><span class="lab">The four · week 3</span><div class="trk"><div class="fill" data-w="19%" style="background:var(--red)">6</div></div></div>
+      <div class="sb"><span class="lab">The four · week 4</span><div class="trk"><div class="fill" data-w="10%" style="background:var(--red)">3</div></div></div>
+      <p style="color:var(--mute);font-size:13px;margin:12px 0 0">The other 12 gained pings (~120 → ~160 a week) but still missed ~19 a week, up from 1–3. Callouts nobody took: 5.5% → 11.1% (48 of 879, then 49 of 440).</p>
+    </div>
+  </div>
+</section>
+
+<section id="loop">
+  <div class="eyebrow">Why it happened · leading explanation, not proven</div>
+  <h2>A loop with no way out</h2>
+  <p class="lede" style="font-size:16px">Read from <code>history.py</code>, <code>offer.py</code>, <code>config.py</code>. A score only changes when someone is pinged. Nothing decays; nobody is removed; the 2019 TODO asks whether scores should recover and no one answered.</p>
+  <div class="tog" id="tog"><button class="on" data-m="before">Before 4.2</button><button data-m="after">After 4.2</button></div>
+  <div class="card">
+    <div class="loop" id="loopbox"></div>
+    <p id="looptxt" style="color:var(--mute);margin:8px 0 0"></p>
+  </div>
+  <div class="grid2">
+    <div class="card reveal"><h3>The code, in three lines</h3>
+      <div class="sb"><span class="lab">Taken</span><div class="trk"><div class="fill" data-w="40%" style="background:var(--green)">+0.08</div></div></div>
+      <div class="sb"><span class="lab">Turned down</span><div class="trk"><div class="fill" data-w="60%" style="background:var(--red)">−0.12</div></div></div>
+      <div class="sb"><span class="lab">Missed</span><div class="trk"><div class="fill" data-w="60%" style="background:var(--red)">−0.12</div></div></div>
+      <p style="color:var(--mute);font-size:13px;margin:10px 0 0">One identical call, once per ping. Break-even acceptance ≈ 60%. Scores floor at 0.</p></div>
+    <div class="card reveal"><h3>What it does and doesn't say</h3>
+      <ul class="caveat" style="padding-left:18px;margin:0">
+      <li>Fits the data: misses start immediately, volume falls after.</li>
+      <li>Cuts against "loop alone": 4.2 also <i>lowered</i> the acceptance weight, so the proximity change is an untested alternative.</li>
+      <li>Scores aren't in the database; confirming needs Wen Li.</li></ul></div>
+  </div>
+</section>
+
+<section id="journey">
+  <div class="eyebrow">Six modules · one finding and the prompt behind each</div>
+  <h2>How I got here</h2>
+  <p class="lede" style="font-size:16px">Prompts are copied verbatim from each module's <code>prompts.md</code>.</p>
+  <div class="mods" id="mods"></div>
+
+  <div class="mod on" data-i="0">
+    <h3>01 · Origin Story <span class="tag">orient and challenge the story</span></h3>
+    <div class="plabel">Prompt I wrote (#3, after asking for best/worst case in #2)</div>
+    <div class="prompt">Yes, pull the acceptance numbers from rook-database</div>
+    <div class="plabel">Finding</div>
+    <div class="found">The handover said "seasonal August dip." The database said otherwise: acceptance held at <b>75–78% for six weeks</b>, fell to <b>54%</b> in release week, then 66, 67, 73%. Missed pings rose from ~2% to 21.5%; turn-downs stayed flat. First crack in the wiki's story. <i>(Then #4: "What's contradictory or missing across the wiki pages, the handover note, and the rest of this folder?")</i></div>
+  </div>
+
+  <div class="mod" data-i="1">
+    <h3>02 · Super Hearing <span class="tag">listen to users</span></h3>
+    <div class="plabel">Prompt I wrote (#8)</div>
+    <div class="prompt">Do the call tickets tell a different story than the interviews?</div>
+    <div class="plabel">Finding</div>
+    <div class="found">Same story from different seats. <b>Vanished pings</b> (15 tickets) are the common, milder effect; <b>quiet phones</b> (30 tickets, <i>none before 12 Aug</i>) are the rare, severe one. Tickets rose about 4× after release, from ~6 to 28 a week. Caveat: Vesper and Meteor Mite have no tickets, and some ticket text repeats across responders.</div>
+  </div>
+
+  <div class="mod" data-i="2">
+    <h3>03 · Rewind <span class="tag">look at the data over time</span></h3>
+    <div class="plabel">Prompt I wrote (#8)</div>
+    <div class="prompt">Run the other 12 responders by week</div>
+    <div class="plabel">Finding</div>
+    <div class="found">The "recovery" (46.8% → 72.7%) is <b>mostly the four being pinged less</b> (31, 16, 6, 3 a week), not people improving. The other 12 still miss ~19 pings a week, up from 1–3. An average hid four people. <i>(I'd asked in #18 what I'd have missed with only the number, and this is the answer.)</i></div>
+  </div>
+
+  <div class="mod" data-i="3">
+    <h3>04 · X-Ray Vision <span class="tag">read the code</span></h3>
+    <div class="plabel">Prompt I wrote (#15)</div>
+    <div class="prompt">Find me the part of this code that takes points off somebody when they miss a ping or turn one down. Show it to me and explain it in plain English. Then find me every single thing in this code that puts points back on.</div>
+    <div class="plabel">Finding</div>
+    <div class="found">A miss and a turn-down are <b>one identical −0.12 call</b>. Exactly one thing ever raises a score: <code>record_accepted</code>, +0.08. No decay, no recovery, no removal. A responder who is never offered a ping can never earn a way back. Before 12 Aug the four were not chronic decliners, so the change hit everyone equally; whether that was a decision is still Wen Li's to say.</div>
+  </div>
+
+  <div class="mod" data-i="4">
+    <h3>05 · Super Speed <span class="tag">build the fix</span></h3>
+    <div class="plabel">Prompt I wrote (#5)</div>
+    <div class="prompt">Take the brief you just wrote and build me a working prototype, an actual screen I can click through, not a description of one. Save it as 05-super-speed/prototype.html, a single file I can just open in my browser. Show me where this would actually happen, and make at least one thing on it respond when I click it.</div>
+    <div class="plabel">Artifact</div>
+    <div class="found">A clickable <b>prototype.html</b> with Release A/B/C, the Vesper / Aunt Dot and Meteor Mite / Kip scenarios, and an "in play here" panel. Embedded in the next section. The brief that drove it came from #1–#4 of the same module, where I set direction: split misses from turn-downs, let handlers weigh in, make the responder seek out the missed-ping list, keep the 60s wait.</div>
+  </div>
+
+  <div class="mod" data-i="5">
+    <h3>06 · Sidekicks <span class="tag">make the habit reusable</span></h3>
+    <div class="plabel">Prompt I wrote (#1)</div>
+    <div class="prompt">I want to save a habit as something I can reuse. When I review a brief before it goes any further, here's what I actually check for:
+- It names who owns it
+- It says how we'll know it worked
+- The scope at the end matches the scope at the start
+- It explains the problem before it proposes a fix
+- The questions or behaviors we'd want to understand after release are proposed
+- It identifies products, PMs, and/or teams who would need to weigh in on proposed work.
+
+Turn that into a skill called review-checklist, so I can point it at any brief and get the same check every time, without me explaining it again.</div>
+    <div class="plabel">Artifact</div>
+    <div class="found"><code>.claude/skills/review-checklist/SKILL.md</code>: six checks, a Pass/Partial/Fail table, and a "fix before it moves on" list. Its first run (#2) on my own brief is in "The skill" below.</div>
+  </div>
+</section>
+
+<section id="fix">
+  <div class="eyebrow">The fix · from the product brief and prototype</div>
+  <h2>Restore their standing without reverting the timeout</h2>
+  <p class="lede" style="font-size:16px">Engineering could quietly revert 60s → 90s. Helen asked for something that still works for the responder with the faster window.</p>
+  <div class="grid2">
+    <div class="card reveal"><h3 class="blue">Release A · scoring</h3><ul style="padding-left:18px;margin:6px 0 0"><li>Miss and turn-down scored apart; a miss about −0.04</li><li>Scores ease back toward neutral; floor 0.2</li><li>Ping countdown on the phone</li><li>"Missed pings" list the responder opens herself or himself, with review requests</li><li>Handler "mark legit": a full, audited reversal</li><li>Misses with no opened event auto-reverse, unless over X% of that responder's pings (X a runtime setting, placeholder 25%)</li></ul></div>
+    <div class="card reveal"><h3 class="amber">Releases B and C</h3><ul style="padding-left:18px;margin:6px 0 0"><li><b>B:</b> +15s grace once a ping is opened, "Your standing" card, support-queue routing, weekly report by responder</li><li><b>C:</b> quiet-responder alert, shadow scoring, re-entry ping</li><li><b>Unchanged:</b> the 60s wait. Release numbers are left to Helen and Marcus.</li></ul></div>
+  </div>
+  <div class="card reveal" style="margin-top:6px"><b>Honest limit:</b> the grace only helps someone who has already opened the ping. A responder still climbing the stairs gets help from the lighter penalty and the review path, not the extra 15 seconds. Whether that is enough is open.</div>
+  <h3 style="margin-top:22px">Try it: the prototype, live</h3>
+  <p style="color:var(--mute);margin:0 0 10px;font-size:14px">Switch Release A/B/C, pick a scenario, and click through the phone and console. Figures for The Gale and the weekly report are illustrative.</p>
+  <iframe title="Rook Dispatch prototype" srcdoc="&lt;!DOCTYPE html&gt;
+&lt;html lang=&quot;en&quot;&gt;
+&lt;head&gt;
+&lt;meta charset=&quot;utf-8&quot;&gt;
+&lt;title&gt;Rook Dispatch — release prototype (A, B, C)&lt;/title&gt;
+&lt;meta name=&quot;viewport&quot; content=&quot;width=device-width, initial-scale=1&quot;&gt;
+&lt;style&gt;
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: Segoe UI, Arial, sans-serif; background: #eef0f3; color: #1b1f24; }
+  header { background: #1b1f24; color: #fff; padding: 10px 20px; display: flex; gap: 16px; align-items: center; flex-wrap: wrap; }
+  header h1 { font-size: 16px; margin: 0; font-weight: 600; }
+  .tag { font-size: 12px; background: #b45309; padding: 2px 8px; border-radius: 10px; }
+  .rels { display: flex; gap: 6px; }
+  .rels button { background: #343b45; color: #fff; border: 2px solid transparent; padding: 8px 16px; cursor: pointer; font-size: 15px; font-weight: 600; border-radius: 6px; }
+  .rels button.on { background: #f59e0b; color: #1b1f24; border-color: #fff; }
+  .tabs button { background: #343b45; color: #fff; border: 0; padding: 8px 14px; cursor: pointer; font-size: 14px; }
+  .tabs button.on { background: #2563eb; }
+  .tabs button:first-child { border-radius: 6px 0 0 6px; } .tabs button:last-child { border-radius: 0 6px 6px 0; }
+  .hdr-btn { background: #343b45; color: #fff; border: 0; padding: 7px 12px; border-radius: 6px; cursor: pointer; font-size: 13px; margin-left: auto; }
+  main { max-width: 1040px; margin: 16px auto 40px; padding: 0 16px; }
+  .banner { background: #fff; border: 2px solid #f59e0b; border-radius: 10px; padding: 12px 16px; margin-bottom: 16px; }
+  .banner h2 { margin: 0 0 2px; font-size: 18px; }
+  .banner .sub { color: #4b5563; font-size: 13px; margin: 0 0 10px; }
+  .cols { display: flex; gap: 24px; flex-wrap: wrap; }
+  .cols &gt; div { flex: 1; min-width: 280px; }
+  .cols h3 { font-size: 12px; text-transform: uppercase; letter-spacing: .04em; margin: 0 0 4px; }
+  .cols ul { margin: 0; padding-left: 0; list-style: none; font-size: 13px; }
+  .cols li { padding: 3px 0; }
+  .cols li .r { display: inline-block; min-width: 38px; font-weight: 600; color: #6b7280; }
+  .cols .old li { color: #6b7280; }
+  .newbadge { display: inline-block; background: #f59e0b; color: #1b1f24; font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 8px; margin-left: 6px; vertical-align: middle; }
+  .engine { display: inline-block; background: #e5e7eb; color: #374151; font-size: 10px; padding: 1px 6px; border-radius: 8px; margin-left: 6px; }
+  .note { font-size: 13px; color: #4b5563; margin: 0 0 12px; }
+  .stage { display: flex; gap: 32px; flex-wrap: wrap; align-items: flex-start; }
+  .new { outline: 2px dashed #f59e0b; outline-offset: 2px; border-radius: 6px; }
+
+  .phone { width: 340px; height: 640px; background: #fff; border: 10px solid #1b1f24; border-radius: 34px; overflow: hidden; display: flex; flex-direction: column; position: relative; }
+  .phone .bar { background: #1e3a5f; color: #fff; padding: 14px 16px; font-weight: 600; }
+  .phone .bar small { display: block; font-weight: 400; opacity: .8; font-size: 12px; }
+  .phone .body { flex: 1; padding: 16px; overflow-y: auto; }
+  .phone nav { display: flex; border-top: 1px solid #d1d5db; }
+  .phone nav button { flex: 1; padding: 12px 4px; border: 0; background: #f9fafb; cursor: pointer; font-size: 13px; }
+  .phone nav button.on { background: #dbeafe; font-weight: 600; }
+  .btn { display: block; width: 100%; padding: 12px; border-radius: 8px; border: 0; font-size: 15px; cursor: pointer; margin-top: 10px; }
+  .btn.primary { background: #2563eb; color: #fff; } .btn.green { background: #15803d; color: #fff; }
+  .btn.plain { background: #e5e7eb; } .btn.small { width: auto; display: inline-block; padding: 6px 10px; font-size: 13px; margin-top: 6px; }
+  .card { border: 1px solid #d1d5db; border-radius: 10px; padding: 12px; margin-bottom: 10px; font-size: 14px; }
+  .card .when { font-weight: 600; }
+  .pill { display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: 10px; margin-top: 6px; }
+  .pill.counted { background: #fee2e2; color: #991b1b; } .pill.rev { background: #dcfce7; color: #166534; }
+  .pill.wait { background: #fef3c7; color: #92400e; } .pill.no { background: #e5e7eb; color: #374151; }
+  .ring { width: 150px; height: 150px; border-radius: 50%; margin: 14px auto; display: flex; align-items: center; justify-content: center; font-size: 44px; font-weight: 700; }
+  .ping h2 { margin: 6px 0; text-align: center; font-size: 20px; }
+  .ping p { text-align: center; margin: 4px 0; color: #4b5563; font-size: 14px; }
+  .gauge { height: 10px; border-radius: 5px; background: #e5e7eb; overflow: hidden; margin: 8px 0; }
+  .gauge div { height: 100%; background: #2563eb; }
+  .overlay { position: absolute; inset: 0; background: rgba(0,0,0,.5); display: none; align-items: flex-end; }
+  .overlay.on { display: flex; }
+  .sheet { background: #fff; width: 100%; padding: 16px; border-radius: 16px 16px 0 0; }
+  .sheet label { display: block; margin: 6px 0; font-size: 14px; }
+  .sheet textarea { width: 100%; height: 52px; }
+
+  .console { flex: 1; min-width: 480px; background: #fff; border: 1px solid #d1d5db; border-radius: 8px; overflow: hidden; }
+  .console .top { background: #1e3a5f; color: #fff; padding: 12px 16px; }
+  .console .in { padding: 16px; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th, td { text-align: left; padding: 8px; border-bottom: 1px solid #e5e7eb; }
+  th { background: #f3f4f6; }
+  .admin { background: #fffbeb; border: 1px solid #fde68a; border-radius: 8px; padding: 10px 12px; margin-top: 14px; font-size: 13px; }
+  .admin.grey { background: #f3f4f6; border-color: #d1d5db; }
+  .admin.red { background: #fef2f2; border-color: #fecaca; }
+  .admin input[type=number] { width: 56px; }
+  .bars { display: flex; align-items: flex-end; gap: 6px; height: 60px; margin: 8px 0; }
+  .bars div { width: 28px; background: #2563eb; text-align: center; font-size: 10px; color: #fff; }
+  .toast { position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%); background: #1b1f24; color: #fff; padding: 10px 16px; border-radius: 8px; font-size: 14px; display: none; z-index: 5; }
+  .controls { margin-top: 4px; width: 340px; font-size: 13px; }
+  .controls button { margin: 3px 4px 3px 0; padding: 6px 10px; cursor: pointer; }
+  .hidden { display: none; }
+  .cards { display: flex; gap: 10px; }
+  .rcard { flex: 1; border: 2px solid #d1d5db; border-radius: 8px; padding: 10px; font-size: 13px; cursor: pointer; background: #fff; }
+  .rcard.sel { border-color: #2563eb; background: #eff6ff; }
+  .rcard h4 { margin: 0 0 4px; font-size: 15px; }
+  .rcard .big { font-size: 22px; font-weight: 700; }
+  .rcard.quiet .big { color: #b45309; } .rcard.busy .big { color: #166534; }
+  .banner summary { cursor: pointer; font-size: 13px; color: #2563eb; font-weight: 600; }
+  .play { width: 290px; background: #fff; border: 1px solid #d1d5db; border-radius: 8px; padding: 12px; font-size: 13px; align-self: flex-start; }
+  .play h3 { margin: 0 0 2px; font-size: 14px; }
+  .play .legend { color: #6b7280; font-size: 11px; margin: 0 0 8px; }
+  .play .it { border: 1px solid #e5e7eb; border-left: 4px solid #d1d5db; border-radius: 6px; padding: 6px 8px; margin-bottom: 6px; color: #6b7280; }
+  .play .it b { color: #374151; }
+  .play .it .hint { font-size: 11px; display: block; }
+  .play .it.on { border-left-color: #2563eb; background: #eff6ff; color: #1e3a8a; }
+  .play .it.hit { border-left-color: #15803d; color: #166534; }
+  .play .it.pulse { background: #dcfce7; animation: flash .6s 3; }
+  .play .st { float: right; font-size: 10px; font-weight: 700; }
+  @keyframes flash { 50% { background: #86efac; } }
+&lt;/style&gt;
+&lt;/head&gt;
+&lt;body&gt;
+&lt;header&gt;
+  &lt;h1&gt;Rook Dispatch&lt;/h1&gt;&lt;span class=&quot;tag&quot;&gt;Prototype · fictional data&lt;/span&gt;
+  &lt;div class=&quot;tabs&quot;&gt;
+    &lt;button id=&quot;sc-vesper&quot; onclick=&quot;setPersona(&#x27;vesper&#x27;)&quot;&gt;Vesper · Aunt Dot&lt;/button&gt;
+    &lt;button id=&quot;sc-mite&quot; onclick=&quot;setPersona(&#x27;mite&#x27;)&quot;&gt;Meteor Mite · Kip&lt;/button&gt;
+  &lt;/div&gt;
+  &lt;div class=&quot;rels&quot;&gt;
+    &lt;button id=&quot;rel1&quot; onclick=&quot;setRel(1)&quot;&gt;Release A&lt;/button&gt;
+    &lt;button id=&quot;rel2&quot; onclick=&quot;setRel(2)&quot;&gt;Release B&lt;/button&gt;
+    &lt;button id=&quot;rel3&quot; onclick=&quot;setRel(3)&quot;&gt;Release C&lt;/button&gt;
+  &lt;/div&gt;
+  &lt;div class=&quot;tabs&quot;&gt;
+    &lt;button id=&quot;tab-phone&quot; onclick=&quot;showView(&#x27;phone&#x27;)&quot;&gt;&lt;/button&gt;
+    &lt;button id=&quot;tab-console&quot; onclick=&quot;showView(&#x27;console&#x27;)&quot;&gt;&lt;/button&gt;
+    &lt;button id=&quot;tab-support&quot; onclick=&quot;showView(&#x27;support&#x27;)&quot;&gt;Support review queue&lt;/button&gt;
+  &lt;/div&gt;
+  &lt;button class=&quot;hdr-btn&quot; onclick=&quot;resetDemo()&quot;&gt;Reset demo&lt;/button&gt;
+&lt;/header&gt;
+&lt;main&gt;
+  &lt;div class=&quot;banner&quot;&gt;
+    &lt;h2 id=&quot;b-title&quot;&gt;&lt;/h2&gt;
+    &lt;p class=&quot;sub&quot; id=&quot;b-sub&quot;&gt;&lt;/p&gt;
+    &lt;details id=&quot;notes&quot;&gt;
+      &lt;summary&gt;Release notes: what is new, and what shipped earlier&lt;/summary&gt;
+      &lt;div class=&quot;cols&quot; style=&quot;margin-top:10px&quot;&gt;
+        &lt;div&gt;&lt;h3 style=&quot;color:#b45309&quot;&gt;New in this release&lt;/h3&gt;&lt;ul id=&quot;b-new&quot;&gt;&lt;/ul&gt;&lt;/div&gt;
+        &lt;div&gt;&lt;h3 style=&quot;color:#6b7280&quot;&gt;Already shipped in earlier releases&lt;/h3&gt;&lt;ul id=&quot;b-old&quot; class=&quot;old&quot;&gt;&lt;/ul&gt;&lt;/div&gt;
+      &lt;/div&gt;
+      &lt;p class=&quot;note&quot; style=&quot;margin:8px 0 0&quot;&gt;Items with a dashed orange outline on screen are new in the release you are viewing. Release numbers are placeholders; Helen and Marcus set the real ones.&lt;/p&gt;
+    &lt;/details&gt;
+  &lt;/div&gt;
+  &lt;p class=&quot;note&quot; id=&quot;note&quot;&gt;&lt;/p&gt;
+
+  &lt;div id=&quot;view-phone&quot; class=&quot;stage&quot;&gt;
+    &lt;div&gt;
+      &lt;div class=&quot;phone&quot;&gt;
+        &lt;div class=&quot;bar&quot; id=&quot;ph-bar&quot;&gt;&lt;/div&gt;
+        &lt;div class=&quot;body&quot; id=&quot;phone-body&quot;&gt;&lt;/div&gt;
+        &lt;nav&gt;
+          &lt;button id=&quot;n-home&quot; onclick=&quot;go(&#x27;home&#x27;)&quot;&gt;Home&lt;/button&gt;
+          &lt;button id=&quot;n-missed&quot; onclick=&quot;go(&#x27;missed&#x27;)&quot;&gt;Missed pings &lt;span id=&quot;n-badge&quot;&gt;&lt;/span&gt;&lt;/button&gt;
+        &lt;/nav&gt;
+        &lt;div class=&quot;overlay&quot; id=&quot;sheet-wrap&quot;&gt;
+          &lt;div class=&quot;sheet&quot;&gt;
+            &lt;strong&gt;Ask for a review&lt;/strong&gt;
+            &lt;p style=&quot;font-size:13px;margin:4px 0&quot;&gt;What happened with the &lt;span id=&quot;sheet-when&quot;&gt;&lt;/span&gt; ping?&lt;/p&gt;
+            &lt;label&gt;&lt;input type=&quot;radio&quot; name=&quot;why&quot; value=&quot;Didn&#x27;t see it&quot; checked&gt; I didn&#x27;t see it&lt;/label&gt;
+            &lt;label&gt;&lt;input type=&quot;radio&quot; name=&quot;why&quot; value=&quot;Wasn&#x27;t available&quot;&gt; I wasn&#x27;t available&lt;/label&gt;
+            &lt;label&gt;&lt;input type=&quot;radio&quot; name=&quot;why&quot; value=&quot;Phone problem&quot;&gt; Phone problem&lt;/label&gt;
+            &lt;label&gt;&lt;input type=&quot;radio&quot; name=&quot;why&quot; value=&quot;Too far&quot;&gt; Too far&lt;/label&gt;
+            &lt;label&gt;&lt;input type=&quot;radio&quot; name=&quot;why&quot; value=&quot;Other&quot;&gt; Other&lt;/label&gt;
+            &lt;textarea id=&quot;why-note&quot; placeholder=&quot;Optional short note (no personal details)&quot;&gt;&lt;/textarea&gt;
+            &lt;button class=&quot;btn primary&quot; onclick=&quot;submitReview()&quot;&gt;Send request&lt;/button&gt;
+            &lt;button class=&quot;btn plain&quot; onclick=&quot;closeSheet()&quot;&gt;Cancel&lt;/button&gt;
+          &lt;/div&gt;
+        &lt;/div&gt;
+      &lt;/div&gt;
+    &lt;/div&gt;
+    &lt;div class=&quot;controls&quot;&gt;
+      &lt;strong&gt;Try it&lt;/strong&gt;
+      &lt;p style=&quot;margin:4px 0 8px&quot;&gt;These stand in for things that happen on their own.&lt;/p&gt;
+      &lt;button onclick=&quot;sendPing(false)&quot; id=&quot;btn-ping&quot;&gt;&lt;/button&gt;
+      &lt;button onclick=&quot;unseenPing()&quot; id=&quot;btn-unseen&quot;&gt;&lt;/button&gt;
+      &lt;span data-rel=&quot;3&quot;&gt;&lt;button onclick=&quot;sendPing(true)&quot;&gt;Send a re-entry ping&lt;/button&gt;&lt;/span&gt;
+      &lt;label data-rel=&quot;2&quot; style=&quot;display:block;margin-top:8px&quot;&gt;&lt;input type=&quot;checkbox&quot; id=&quot;has-handler&quot; checked onchange=&quot;hasHandler=this.checked&quot;&gt; &lt;span id=&quot;lbl-handler&quot;&gt;&lt;/span&gt;&lt;/label&gt;
+      &lt;p style=&quot;margin-top:12px&quot; id=&quot;no-popup&quot;&gt;&lt;/p&gt;
+    &lt;/div&gt;
+    &lt;div class=&quot;play&quot; id=&quot;play-phone&quot;&gt;&lt;/div&gt;
+  &lt;/div&gt;
+
+  &lt;div id=&quot;view-console&quot; class=&quot;stage hidden&quot;&gt;
+    &lt;div class=&quot;console&quot;&gt;
+      &lt;div class=&quot;top&quot; id=&quot;c-top&quot;&gt;&lt;/div&gt;
+      &lt;div class=&quot;in&quot;&gt;
+        &lt;div class=&quot;cards&quot; id=&quot;roster&quot;&gt;&lt;/div&gt;
+        &lt;div class=&quot;admin red&quot; id=&quot;alert&quot; data-rel=&quot;3&quot;&gt;&lt;/div&gt;
+        &lt;table style=&quot;margin-top:12px&quot;&gt;
+          &lt;thead&gt;&lt;tr&gt;&lt;th&gt;When&lt;/th&gt;&lt;th&gt;Opened?&lt;/th&gt;&lt;th&gt;Status&lt;/th&gt;&lt;th&gt;Reason&lt;/th&gt;&lt;th&gt;&lt;/th&gt;&lt;/tr&gt;&lt;/thead&gt;
+          &lt;tbody id=&quot;console-rows&quot;&gt;&lt;/tbody&gt;
+        &lt;/table&gt;
+        &lt;div class=&quot;admin&quot;&gt;
+          &lt;strong&gt;Auto-reversal limit (X)&lt;/strong&gt; — a no-opened miss is reversed automatically unless no-opened misses are more than
+          &lt;input type=&quot;number&quot; id=&quot;x-input&quot; value=&quot;25&quot; min=&quot;0&quot; max=&quot;100&quot; onchange=&quot;setX(this.value)&quot;&gt;% of &lt;span id=&quot;x-who&quot;&gt;&lt;/span&gt; pings.&lt;br&gt;
+          Changing this takes effect now. It does not need a release. &lt;span id=&quot;x-status&quot;&gt;&lt;/span&gt;
+        &lt;/div&gt;
+        &lt;div class=&quot;admin grey&quot;&gt;Share now: &lt;strong id=&quot;share&quot;&gt;&lt;/strong&gt; of &lt;span id=&quot;pings-total&quot;&gt;&lt;/span&gt; pings were missed without being opened.
+          · Excuses this week: &lt;strong id=&quot;excuses&quot;&gt;&lt;/strong&gt; (cap is a placeholder)&lt;/div&gt;
+        &lt;div class=&quot;admin grey&quot; data-rel=&quot;2&quot;&gt;
+          &lt;strong&gt;Weekly report by responder&lt;/strong&gt; &lt;small&gt;(illustrative figures based on the 4.2 data)&lt;/small&gt;
+          &lt;table style=&quot;margin-top:6px&quot;&gt;&lt;thead&gt;&lt;tr&gt;&lt;th&gt;Responder&lt;/th&gt;&lt;th&gt;Pings/wk before 4.2&lt;/th&gt;&lt;th&gt;Pings/wk now&lt;/th&gt;&lt;th&gt;Missed now&lt;/th&gt;&lt;/tr&gt;&lt;/thead&gt;
+          &lt;tbody id=&quot;rep-body&quot;&gt;&lt;/tbody&gt;&lt;/table&gt;
+        &lt;/div&gt;
+        &lt;div class=&quot;admin grey&quot; data-rel=&quot;3&quot;&gt;
+          &lt;strong&gt;Shadow scoring&lt;/strong&gt; — proposed scoring computed alongside the live rules, both logged. &lt;small&gt;(demo values)&lt;/small&gt;
+          &lt;p style=&quot;margin:6px 0&quot;&gt;Live 4.2 rules (a miss = a turn-down, floor 0, no recovery): &lt;strong id=&quot;sc-old&quot;&gt;&lt;/strong&gt;&lt;br&gt;
+          Proposed (miss costs less, floor 0.2, eases back): &lt;strong id=&quot;sc-new&quot;&gt;&lt;/strong&gt;&lt;/p&gt;
+          &lt;button onclick=&quot;advanceWeek()&quot;&gt;Advance a week&lt;/button&gt;
+        &lt;/div&gt;
+        &lt;div class=&quot;admin grey&quot;&gt;&lt;strong&gt;Audit log&lt;/strong&gt;&lt;div id=&quot;audit&quot; style=&quot;margin-top:6px&quot;&gt;Nothing yet.&lt;/div&gt;&lt;/div&gt;
+      &lt;/div&gt;
+    &lt;/div&gt;
+    &lt;div class=&quot;play&quot; id=&quot;play-console&quot;&gt;&lt;/div&gt;
+  &lt;/div&gt;
+
+  &lt;div id=&quot;view-support&quot; class=&quot;stage hidden&quot;&gt;
+    &lt;div class=&quot;console&quot;&gt;
+      &lt;div class=&quot;top&quot;&gt;&lt;strong&gt;Support review queue&lt;/strong&gt;&lt;br&gt;&lt;small&gt;Review requests from responders with no handler&lt;/small&gt;&lt;/div&gt;
+      &lt;div class=&quot;in&quot;&gt;
+        &lt;table&gt;
+          &lt;thead&gt;&lt;tr&gt;&lt;th&gt;Responder&lt;/th&gt;&lt;th&gt;When&lt;/th&gt;&lt;th&gt;Reason&lt;/th&gt;&lt;th&gt;&lt;/th&gt;&lt;/tr&gt;&lt;/thead&gt;
+          &lt;tbody id=&quot;support-rows&quot;&gt;&lt;/tbody&gt;
+        &lt;/table&gt;
+        &lt;p class=&quot;note&quot; id=&quot;support-empty&quot;&gt;&lt;/p&gt;
+      &lt;/div&gt;
+    &lt;/div&gt;
+    &lt;div class=&quot;play&quot; id=&quot;play-support&quot;&gt;&lt;/div&gt;
+  &lt;/div&gt;
+&lt;/main&gt;
+&lt;div class=&quot;toast&quot; id=&quot;toast&quot;&gt;&lt;/div&gt;
+
+&lt;script&gt;
+var RELEASES = {
+  1: { name: &#x27;Release A — fix the engine, first visible change&#x27;, sub: &#x27;The scoring change ships with something responders and handlers can see.&#x27;,
+    items: [
+      [&#x27;R1–R6&#x27;,&#x27;Miss and turn-down scored separately; a miss costs less; scores ease back; floor raised; scores durable&#x27;,&#x27;engine&#x27;],
+      [&#x27;R7&#x27;,&#x27;Countdown on the ping screen&#x27;],
+      [&#x27;R8&#x27;,&#x27;Opened event recorded when the ping screen renders&#x27;,&#x27;engine&#x27;],
+      [&#x27;R9&#x27;,&#x27;&quot;Missed pings&quot; list the responder opens on their own&#x27;],
+      [&#x27;R10&#x27;,&#x27;Responder can request a review of a miss&#x27;],
+      [&#x27;R11&#x27;,&#x27;Auto-reversal for never-opened misses, with a limit X changeable without a release&#x27;],
+      [&#x27;R14&#x27;,&#x27;Handler console lists misses and whether opened&#x27;],
+      [&#x27;R15&#x27;,&#x27;Handler marks a miss legit: full reversal, audit logged&#x27;],
+      [&#x27;R18&#x27;,&#x27;Weekly cap on handler excuses&#x27;],
+      [&#x27;R19–R20&#x27;,&#x27;Per-ping and excuse logging&#x27;,&#x27;engine&#x27;]
+    ]},
+  2: { name: &#x27;Release B — a fair window and a clear path back&#x27;, sub: &#x27;More time to answer when you have already opened a ping, and a plain-language standing card.&#x27;,
+    items: [
+      [&#x27;R12&#x27;,&#x27;Opened-ping grace: +15s if the ping was opened before time ran out&#x27;],
+      [&#x27;R13&#x27;,&#x27;&quot;Your standing&quot; card on the home screen&#x27;],
+      [&#x27;R16&#x27;,&#x27;Review requests go to the handler first; with no handler they go to the support team&#x27;],
+      [&#x27;R21&#x27;,&#x27;Weekly report by responder, not only the aggregate&#x27;]
+    ]},
+  3: { name: &#x27;Release C — spot it early, prove it, bring people back&#x27;, sub: &#x27;Proactive alerts, evidence on the scoring, and a way back into the ping order.&#x27;,
+    items: [
+      [&#x27;R17&#x27;,&#x27;Quiet-responder alert in the handler console&#x27;],
+      [&#x27;R22&#x27;,&#x27;Shadow scoring: proposed scores logged next to live scores&#x27;],
+      [&#x27;R23&#x27;,&#x27;Re-entry slot: occasional pings for responders far down the list&#x27;]
+    ]}
+};
+var rel = 1, view = &#x27;phone&#x27;, screen = &#x27;home&#x27;, X = 25, timer = null, reviewId = null, nextId = 4;
+var misses, totalPings, noOpened, newScore, oldScore, audit, excuses, hasHandler = true, week = 0;
+
+var E1 = &#x27;R1–R6&#x27;, E2 = &#x27;R19–R20&#x27;, hits = {}, graceOn = false, curReentry = false;
+var PERSONAS = {
+  vesper: { name:&#x27;Vesper&#x27;, area:&#x27;Old Town&#x27;, handler:&#x27;Aunt Dot&#x27;, s:&#x27;he&#x27;, o:&#x27;him&#x27;, p:&#x27;his&#x27;, other:null, missedPct:&#x27;~60%&#x27;,
+            ping:&#x27;Structural-entry · Old Town · about 12 min away&#x27; },
+  mite:   { name:&#x27;Meteor Mite&#x27;, area:&#x27;Eastgate&#x27;, handler:&#x27;Kip&#x27;, s:&#x27;she&#x27;, o:&#x27;her&#x27;, p:&#x27;her&#x27;, other:&#x27;The Gale&#x27;, missedPct:&#x27;~55%&#x27;,
+            ping:&#x27;Callout · Eastgate · about 12 min away&#x27; }
+};
+var P = PERSONAS.vesper, selResp = &#x27;main&#x27;;
+function setPersona(k){ P = PERSONAS[k]; selResp = &#x27;main&#x27;; resetDemo(); showView(&#x27;console&#x27; === view ? &#x27;console&#x27; : view); }
+function selectResp(w){ selResp = w; render(); }
+function applyStatic(){
+  $(&#x27;sc-vesper&#x27;).className = P===PERSONAS.vesper ? &#x27;on&#x27; : &#x27;&#x27;; $(&#x27;sc-mite&#x27;).className = P===PERSONAS.mite ? &#x27;on&#x27; : &#x27;&#x27;;
+  $(&#x27;tab-phone&#x27;).textContent = &#x27;Responder phone (&#x27;+P.name+&#x27;)&#x27;; $(&#x27;tab-console&#x27;).textContent = &#x27;Handler console (&#x27;+P.handler+&#x27;)&#x27;;
+  $(&#x27;ph-bar&#x27;).innerHTML = P.name+&#x27;&lt;small&gt;&#x27;+P.area+&#x27; · Available&lt;/small&gt;&#x27;;
+  $(&#x27;btn-ping&#x27;).textContent = &#x27;Send &#x27;+P.name+&#x27; a ping&#x27;;
+  $(&#x27;btn-unseen&#x27;).textContent = &#x27;Simulate a ping that never reached &#x27;+P.p+&#x27; screen&#x27;;
+  $(&#x27;lbl-handler&#x27;).textContent = P.name+&#x27; has a handler (untick to send review requests to support instead)&#x27;;
+  $(&#x27;no-popup&#x27;).textContent = &#x27;There is deliberately no pop-up after a miss. &#x27;+P.s.charAt(0).toUpperCase()+P.s.slice(1)+&#x27; goes to Missed pings &#x27;+(P.s===&#x27;she&#x27;?&#x27;herself&#x27;:&#x27;himself&#x27;)+&#x27;.&#x27;;
+  $(&#x27;x-who&#x27;).textContent = P.name+&#x27;’s&#x27;;
+  $(&#x27;support-empty&#x27;).textContent = &#x27;Nothing waiting. Untick &quot;&#x27;+P.name+&#x27; has a handler&quot; on the phone tab, then send a review request to see it land here.&#x27;;
+  $(&#x27;c-top&#x27;).innerHTML = &#x27;&lt;strong&gt;&#x27;+(P.other ? &#x27;Your responders&#x27; : &#x27;Responder: &#x27;+P.name)+&#x27;&lt;/strong&gt; · handler &#x27;+P.handler+&#x27;&lt;br&gt;&lt;small&gt;&#x27;+(P.other ? P.name+&#x27; and &#x27;+P.other+&#x27;, side by side&#x27; : &#x27;Recent missed pings&#x27;)+&#x27;&lt;/small&gt;&#x27;;
+  var rows = [
+    [P.name, &#x27;~12&#x27;, &#x27;~1&#x27;, P.missedPct, true]
+  ];
+  if (P!==PERSONAS.vesper) rows.push([&#x27;Vesper&#x27;,&#x27;~12&#x27;,&#x27;~1&#x27;,&#x27;~60%&#x27;]);
+  rows.push([&#x27;The Undertow&#x27;,&#x27;~12&#x27;,&#x27;~1&#x27;,&#x27;~64%&#x27;], [&#x27;Farlight&#x27;,&#x27;~12&#x27;,&#x27;~1&#x27;,&#x27;~53%&#x27;]);
+  if (P.other) rows.push([P.other,&#x27;~10&#x27;,&#x27;~20&#x27;,&#x27;~0%&#x27;], [&#x27;The other 10 (total)&#x27;,&#x27;~110&#x27;,&#x27;~140&#x27;,&#x27;~15%&#x27;]);
+  else rows.push([&#x27;Meteor Mite&#x27;,&#x27;~12&#x27;,&#x27;~1&#x27;,&#x27;~55%&#x27;], [&#x27;The other 12 (total)&#x27;,&#x27;~120&#x27;,&#x27;~160&#x27;,&#x27;~15%&#x27;]);
+  $(&#x27;rep-body&#x27;).innerHTML = rows.map(function(r){ return &#x27;&lt;tr&#x27;+(r[4]?&#x27; style=&quot;font-weight:700&quot;&#x27;:&#x27;&#x27;)+&#x27;&gt;&lt;td&gt;&#x27;+r[0]+&#x27;&lt;/td&gt;&lt;td&gt;&#x27;+r[1]+&#x27;&lt;/td&gt;&lt;td&gt;&#x27;+r[2]+&#x27;&lt;/td&gt;&lt;td&gt;&#x27;+r[3]+&#x27;&lt;/td&gt;&lt;/tr&gt;&#x27;; }).join(&#x27;&#x27;);
+}
+function renderRoster(){
+  var open = misses.filter(function(m){return m.status===&#x27;counted&#x27; || m.status===&#x27;requested&#x27;;}).length;
+  var h = &#x27;&lt;div class=&quot;rcard quiet&#x27;+(selResp===&#x27;main&#x27;?&#x27; sel&#x27;:&#x27;&#x27;)+&#x27;&quot; onclick=&quot;selectResp(\&#x27;main\&#x27;)&quot;&gt;&lt;h4&gt;&#x27;+P.name+&#x27;&lt;/h4&gt;~1 ping this week&lt;div class=&quot;big&quot;&gt;&#x27;+open+&#x27;&lt;/div&gt;misses counted against &#x27;+P.o+&#x27;&lt;/div&gt;&#x27;;
+  if (P.other) h += &#x27;&lt;div class=&quot;rcard busy&#x27;+(selResp===&#x27;other&#x27;?&#x27; sel&#x27;:&#x27;&#x27;)+&#x27;&quot; onclick=&quot;selectResp(\&#x27;other\&#x27;)&quot;&gt;&lt;h4&gt;&#x27;+P.other+&#x27;&lt;/h4&gt;~20 pings this week &lt;small&gt;(illustrative)&lt;/small&gt;&lt;div class=&quot;big&quot;&gt;0&lt;/div&gt;misses counted&lt;/div&gt;&#x27;;
+  $(&#x27;roster&#x27;).innerHTML = h;
+}
+/* id -&gt; [views it appears in, how it comes into play] */
+var PLAY = {
+  &#x27;R7&#x27;:  [[&#x27;phone&#x27;], &#x27;Send a ping&#x27;],
+  &#x27;R8&#x27;:  [[&#x27;phone&#x27;], &#x27;Send a ping (recorded when the ping screen shows)&#x27;],
+  &#x27;R9&#x27;:  [[&#x27;phone&#x27;], &#x27;Open the Missed pings tab&#x27;],
+  &#x27;R10&#x27;: [[&#x27;phone&#x27;], &#x27;Ask for a review of a miss&#x27;],
+  &#x27;R11&#x27;: [[&#x27;phone&#x27;,&#x27;console&#x27;], &#x27;Simulate a never-seen ping, or change X in the console&#x27;],
+  &#x27;R12&#x27;: [[&#x27;phone&#x27;], &#x27;Let a ping run out (skip to the last 5 seconds)&#x27;],
+  &#x27;R13&#x27;: [[&#x27;phone&#x27;], &#x27;Go to the Home tab&#x27;],
+  &#x27;R16&#x27;: [[&#x27;phone&#x27;,&#x27;support&#x27;], &#x27;Send a review request; untick the handler box to route it to support&#x27;],
+  &#x27;R23&#x27;: [[&#x27;phone&#x27;], &#x27;Send a re-entry ping&#x27;],
+  &#x27;R14&#x27;: [[&#x27;console&#x27;], &#x27;Open the handler console&#x27;],
+  &#x27;R15&#x27;: [[&#x27;console&#x27;,&#x27;support&#x27;], &#x27;Mark legit (handler) or Approve (support)&#x27;],
+  &#x27;R18&#x27;: [[&#x27;console&#x27;], &#x27;Mark legit: the weekly cap counts it&#x27;],
+  &#x27;R17&#x27;: [[&#x27;console&#x27;], &#x27;Open the handler console&#x27;],
+  &#x27;R21&#x27;: [[&#x27;console&#x27;], &#x27;Open the handler console&#x27;],
+  &#x27;R22&#x27;: [[&#x27;console&#x27;], &#x27;Advance a week&#x27;],
+};
+PLAY[E1] = [[&#x27;phone&#x27;,&#x27;console&#x27;], &#x27;Any answer, miss or reversal changes the score behind the screen&#x27;];
+PLAY[E2] = [[&#x27;phone&#x27;,&#x27;console&#x27;,&#x27;support&#x27;], &#x27;Any ping, review or excuse is logged&#x27;];
+function fire(ids){ ids.forEach(function(i){ hits[i] = Date.now(); }); renderPlay(); setTimeout(renderPlay, 2600); }
+function isOn(id){
+  if (id===&#x27;R7&#x27; || id===&#x27;R8&#x27;) return !!timer;
+  if (id===&#x27;R9&#x27;) return view===&#x27;phone&#x27; &amp;&amp; screen===&#x27;missed&#x27; &amp;&amp; !timer;
+  if (id===&#x27;R13&#x27;) return view===&#x27;phone&#x27; &amp;&amp; screen===&#x27;home&#x27; &amp;&amp; !timer;
+  if (id===&#x27;R12&#x27;) return !!timer &amp;&amp; graceOn;
+  if (id===&#x27;R23&#x27;) return !!timer &amp;&amp; curReentry;
+  if (id===&#x27;R14&#x27; || id===&#x27;R17&#x27; || id===&#x27;R21&#x27; || id===&#x27;R22&#x27;) return view===&#x27;console&#x27;;
+  return false;
+}
+function renderPlay(){
+  var el = $(&#x27;play-&#x27;+view); if (!el) return;
+  var order = [], seen = {};
+  for (var k=1;k&lt;=rel;k++) RELEASES[k].items.forEach(function(it){ if (!seen[it[0]]) { seen[it[0]] = [it, k]; order.push(it[0]); } });
+  var h = &#x27;&lt;h3&gt;In play here&lt;/h3&gt;&lt;p class=&quot;legend&quot;&gt;Blue = on screen now · green = triggered this session · grey = not yet. Showing &#x27;+(view===&#x27;phone&#x27;?&#x27;the phone&#x27;:view===&#x27;console&#x27;?&#x27;the handler console&#x27;:&#x27;the support queue&#x27;)+&#x27;, Release &#x27;+&#x27;ABC&#x27;.charAt(rel-1)+&#x27;.&lt;/p&gt;&#x27;;
+  var n = 0;
+  order.forEach(function(id){
+    var p = PLAY[id]; if (!p || p[0].indexOf(view)&lt;0) return;
+    n++;
+    var it = seen[id][0], k = seen[id][1], t = hits[id] ? Date.now()-hits[id] : null;
+    var cls = &#x27;it&#x27; + (isOn(id)?&#x27; on&#x27;:&#x27;&#x27;) + (t!==null?&#x27; hit&#x27;:&#x27;&#x27;) + (t!==null &amp;&amp; t&lt;2500?&#x27; pulse&#x27;:&#x27;&#x27;);
+    var st = isOn(id) ? &#x27;ON SCREEN&#x27; : (t!==null ? (t&lt;2500?&#x27;JUST NOW&#x27;:&#x27;DONE&#x27;) : &#x27;&#x27;);
+    h += &#x27;&lt;div class=&quot;&#x27;+cls+&#x27;&quot;&gt;&lt;span class=&quot;st&quot;&gt;&#x27;+st+&#x27;&lt;/span&gt;&lt;b&gt;&#x27;+id+&#x27;&lt;/b&gt;&#x27;+(k===rel?&#x27;&lt;span class=&quot;newbadge&quot;&gt;NEW&lt;/span&gt;&#x27;:&#x27;&#x27;)+&#x27; &#x27;+it[1]+&#x27;&lt;span class=&quot;hint&quot;&gt;&#x27;+p[1]+&#x27;&lt;/span&gt;&lt;/div&gt;&#x27;;
+  });
+  if (!n) h += &#x27;&lt;p&gt;Nothing from this release applies to this screen.&lt;/p&gt;&#x27;;
+  el.innerHTML = h;
+}
+function $(id){ return document.getElementById(id); }
+function toast(t){ var e=$(&#x27;toast&#x27;); e.textContent=t; e.style.display=&#x27;block&#x27;; clearTimeout(e._t); e._t=setTimeout(function(){e.style.display=&#x27;none&#x27;;}, 3200); }
+function clamp(v,a,b){ return Math.max(a, Math.min(b, v)); }
+function tagNew(r){ return rel===r ? &#x27;&lt;span class=&quot;newbadge&quot;&gt;NEW&lt;/span&gt;&#x27; : &#x27;&#x27;; }
+
+function resetDemo(){
+  clearInterval(timer); timer = null; hits = {}; graceOn = false; curReentry = false;
+  misses = [
+    {id:1, when:&#x27;Mon 12 Oct, 21:14&#x27;, opened:true,  status:&#x27;counted&#x27;, reason:&#x27;&#x27;, route:&#x27;handler&#x27;},
+    {id:2, when:&#x27;Wed 14 Oct, 02:40&#x27;, opened:false, status:&#x27;rev-auto&#x27;, reason:&#x27;&#x27;, route:&#x27;handler&#x27;},
+    {id:3, when:&#x27;Thu 15 Oct, 19:05&#x27;, opened:true,  status:&#x27;counted&#x27;, reason:&#x27;&#x27;, route:&#x27;handler&#x27;}
+  ];
+  totalPings = 20; noOpened = 1; newScore = 0.22; oldScore = 0; audit = []; excuses = 1; week = 0; screen = &#x27;home&#x27;; nextId = 4;
+  X = 25; $(&#x27;x-input&#x27;).value = 25; $(&#x27;x-status&#x27;).textContent = &#x27;&#x27;;
+  render();
+}
+function setRel(r){
+  clearInterval(timer); timer = null; rel = r; screen = &#x27;home&#x27;;
+  if (rel &lt; 2 &amp;&amp; view === &#x27;support&#x27;) view = &#x27;phone&#x27;;
+  showView(view);
+}
+function showView(v){
+  view = v;
+  [&#x27;phone&#x27;,&#x27;console&#x27;,&#x27;support&#x27;].forEach(function(n){ $(&#x27;view-&#x27;+n).className = (n===v) ? &#x27;stage&#x27; : &#x27;stage hidden&#x27;; $(&#x27;tab-&#x27;+n).className = (n===v) ? &#x27;on&#x27; : &#x27;&#x27;; });
+  render();
+}
+function go(s){ clearInterval(timer); timer = null; screen = s; render(); }
+
+function render(){
+  applyStatic();
+  for (var i=1;i&lt;=3;i++) $(&#x27;rel&#x27;+i).className = (i===rel) ? &#x27;on&#x27; : &#x27;&#x27;;
+  var R = RELEASES[rel];
+  $(&#x27;b-title&#x27;).textContent = &#x27;You are viewing: &#x27; + R.name;
+  $(&#x27;b-sub&#x27;).textContent = R.sub;
+  var n = &#x27;&#x27;, o = &#x27;&#x27;;
+  for (var k=1;k&lt;=rel;k++) RELEASES[k].items.forEach(function(it){
+    var li = &#x27;&lt;li&gt;&lt;span class=&quot;r&quot;&gt;&#x27;+it[0]+&#x27;&lt;/span&gt;&#x27;+it[1]+(it[2]===&#x27;engine&#x27; ? &#x27;&lt;span class=&quot;engine&quot;&gt;no screen&lt;/span&gt;&#x27; : &#x27;&#x27;)+(k===rel?&#x27;&lt;span class=&quot;newbadge&quot;&gt;NEW&lt;/span&gt;&#x27;:&#x27;&#x27;)+&#x27;&lt;/li&gt;&#x27;;
+    if (k===rel) n += li; else o += li;
+  });
+  $(&#x27;b-new&#x27;).innerHTML = n; $(&#x27;b-old&#x27;).innerHTML = o || &#x27;&lt;li&gt;Nothing — this is the first release.&lt;/li&gt;&#x27;;
+  $(&#x27;tab-support&#x27;).style.display = rel&gt;=2 ? &#x27;&#x27; : &#x27;none&#x27;;
+  $(&#x27;note&#x27;).textContent = {
+    phone: &quot;Where it happens: &quot;+P.name+&quot;&#x27;s phone app.&quot;,
+    console: &quot;Where it happens: the handler console. &quot;+P.handler+&quot; sees &quot;+P.name+&quot;&#x27;s misses and can undo one that wasn&#x27;t &quot;+P.p+&quot; fault.&quot;+(P.other ? &quot; &quot;+P.other+&quot; sits next to &quot;+P.name+&quot; on the same screen, as it does for &quot;+P.handler+&quot; today.&quot; : &quot;&quot;),
+    support: &quot;Where it happens: the support team&#x27;s queue, for responders who have no handler.&quot;
+  }[view];
+  document.querySelectorAll(&#x27;[data-rel]&#x27;).forEach(function(el){
+    var r = Number(el.getAttribute(&#x27;data-rel&#x27;));
+    el.style.display = rel&gt;=r ? &#x27;&#x27; : &#x27;none&#x27;;
+    if (el.classList) el.classList.toggle(&#x27;new&#x27;, rel===r);
+  });
+  renderPhone(); renderConsole(); renderSupport(); renderPlay();
+}
+
+function statusPill(m){
+  return {
+    counted: &#x27;&lt;span class=&quot;pill counted&quot;&gt;Counted against you&lt;/span&gt;&#x27;,
+    &#x27;rev-auto&#x27;: &#x27;&lt;span class=&quot;pill rev&quot;&gt;Reversed: the ping never reached your screen&lt;/span&gt;&#x27;,
+    &#x27;rev-handler&#x27;: &#x27;&lt;span class=&quot;pill rev&quot;&gt;Reversed in full&lt;/span&gt;&#x27;,
+    requested: &#x27;&lt;span class=&quot;pill wait&quot;&gt;Review requested&#x27;+(m.route===&#x27;support&#x27;?&#x27; · with support&#x27;:&#x27; · with your handler&#x27;)+&#x27;&lt;/span&gt;&#x27;,
+    declined: &#x27;&lt;span class=&quot;pill no&quot;&gt;Review declined&lt;/span&gt;&#x27;
+  }[m.status];
+}
+function standingText(){
+  var s = newScore;
+  if (s &lt; 0.35) return [&#x27;Building back&#x27;, 18, &#x27;Recent misses count for less than turning pings down, and your standing eases back over time. Taking a ping lifts it.&#x27;];
+  if (s &lt; 0.6) return [&#x27;Steady&#x27;, 50, &#x27;You are in a good spot. Answering pings keeps you there.&#x27;];
+  return [&#x27;Strong&#x27;, 85, &#x27;You are near the front for callouts in your area.&#x27;];
+}
+function renderPhone(){
+  $(&#x27;n-home&#x27;).className = screen===&#x27;home&#x27; ? &#x27;on&#x27; : &#x27;&#x27;; $(&#x27;n-missed&#x27;).className = screen===&#x27;missed&#x27; ? &#x27;on&#x27; : &#x27;&#x27;;
+  var open = misses.filter(function(m){return m.status===&#x27;counted&#x27;;}).length;
+  $(&#x27;n-badge&#x27;).innerHTML = open ? &#x27;(&#x27;+open+&#x27;)&#x27; + tagNew(1) : tagNew(1);
+  if (timer) return;
+  var b = $(&#x27;phone-body&#x27;);
+  if (screen===&#x27;home&#x27;) {
+    var h = &#x27;&lt;p style=&quot;margin-top:0&quot;&gt;You are &lt;strong&gt;available&lt;/strong&gt; for callouts.&lt;/p&gt;&#x27;;
+    if (rel&gt;=2) {
+      var st = standingText();
+      h += &#x27;&lt;div class=&quot;card new&quot;&gt;&lt;strong&gt;Your standing: &#x27;+st[0]+&#x27;&lt;/strong&gt;&#x27;+tagNew(2)+&#x27;&lt;div class=&quot;gauge&quot;&gt;&lt;div style=&quot;width:&#x27;+st[1]+&#x27;%&quot;&gt;&lt;/div&gt;&lt;/div&gt;&lt;span style=&quot;font-size:13px&quot;&gt;&#x27;+st[2]+&#x27;&lt;/span&gt;&lt;/div&gt;&#x27;;
+    }
+    h += &#x27;&lt;div class=&quot;card&quot;&gt;Your pings show a countdown, so you can see how long you have to answer.&#x27;+(rel&gt;=2?&#x27; If time runs out after you have opened a ping, you get 15 more seconds.&#x27;:&#x27;&#x27;)+&#x27;&lt;/div&gt;&#x27;;
+    h += &#x27;&lt;div class=&quot;card&quot;&gt;Missed a ping? Look it up under &lt;strong&gt;Missed pings&lt;/strong&gt; and ask for a review.&lt;/div&gt;&#x27;;
+    b.innerHTML = h;
+  } else {
+    var m = &#x27;&lt;p style=&quot;margin-top:0;font-size:13px;color:#4b5563&quot;&gt;Pings you didn\&#x27;t answer in time. A miss costs less than turning a ping down.&lt;/p&gt;&#x27;;
+    misses.slice().reverse().forEach(function(x){
+      m += &#x27;&lt;div class=&quot;card&quot;&gt;&lt;div class=&quot;when&quot;&gt;&#x27;+x.when+&#x27;&lt;/div&gt;&#x27;+(x.opened?&#x27;You opened it but it timed out.&#x27;:&#x27;It never reached your screen.&#x27;)+&#x27;&lt;br&gt;&#x27;+statusPill(x);
+      if (x.status===&#x27;counted&#x27;) m += &#x27;&lt;br&gt;&lt;button class=&quot;btn small plain&quot; onclick=&quot;openSheet(&#x27;+x.id+&#x27;)&quot;&gt;Ask for a review&lt;/button&gt;&#x27;;
+      if (x.reason) m += &#x27;&lt;div style=&quot;font-size:12px;color:#6b7280;margin-top:4px&quot;&gt;Your reason: &#x27;+x.reason+&#x27;&lt;/div&gt;&#x27;;
+      m += &#x27;&lt;/div&gt;&#x27;;
+    });
+    b.innerHTML = m;
+  }
+}
+function renderConsole(){
+  renderRoster();
+  var rows = &#x27;&#x27;;
+  if (selResp===&#x27;other&#x27;) rows = &#x27;&lt;tr&gt;&lt;td colspan=&quot;5&quot;&gt;&#x27;+P.other+&#x27; has no missed pings this month. Nothing to review. &lt;small&gt;(illustrative)&lt;/small&gt;&lt;/td&gt;&lt;/tr&gt;&#x27;;
+  else misses.filter(function(m){return m.route!==&#x27;support&#x27;;}).slice().reverse().forEach(function(m){
+    var s = {counted:&#x27;Counted&#x27;, &#x27;rev-auto&#x27;:&#x27;Reversed (automatic)&#x27;, &#x27;rev-handler&#x27;:&#x27;Reversed (handler)&#x27;, requested:&#x27;Review requested&#x27;, declined:&#x27;Declined&#x27;}[m.status];
+    var can = (m.status===&#x27;counted&#x27;||m.status===&#x27;requested&#x27;) ;
+    rows += &#x27;&lt;tr&gt;&lt;td&gt;&#x27;+m.when+&#x27;&lt;/td&gt;&lt;td&gt;&#x27;+(m.opened?&#x27;Yes&#x27;:&#x27;No&#x27;)+&#x27;&lt;/td&gt;&lt;td&gt;&#x27;+s+&#x27;&lt;/td&gt;&lt;td&gt;&#x27;+(m.reason||&#x27;—&#x27;)+&#x27;&lt;/td&gt;&lt;td&gt;&#x27;
+      + (can ? &#x27;&lt;button onclick=&quot;markLegit(&#x27;+m.id+&#x27;)&quot;&#x27;+(excuses&gt;=5?&#x27; disabled&#x27;:&#x27;&#x27;)+&#x27;&gt;Mark legit&lt;/button&gt;&#x27; : &#x27;&#x27;) + &#x27;&lt;/td&gt;&lt;/tr&gt;&#x27;;
+  });
+  $(&#x27;console-rows&#x27;).innerHTML = rows;
+  $(&#x27;share&#x27;).textContent = Math.round(100*noOpened/totalPings)+&#x27;%&#x27;;
+  $(&#x27;pings-total&#x27;).textContent = totalPings;
+  $(&#x27;excuses&#x27;).textContent = excuses+&#x27; of 5&#x27;;
+  $(&#x27;audit&#x27;).innerHTML = audit.length ? audit.join(&#x27;&lt;br&gt;&#x27;) : &#x27;Nothing yet.&#x27;;
+  $(&#x27;sc-old&#x27;).textContent = oldScore.toFixed(2); $(&#x27;sc-new&#x27;).textContent = newScore.toFixed(2);
+  $(&#x27;alert&#x27;).innerHTML = &#x27;&lt;strong&gt;Quiet-responder alert&#x27;+tagNew(3)+&#x27;&lt;/strong&gt;&lt;br&gt;&#x27;+P.name+&#x27;\&#x27;s pings have fallen from about 12 a week to about 1.&#x27;+(P.other ? &#x27; &#x27;+P.other+&#x27;, on the same screen, is busier than usual: the gap you were seeing is a pattern, not a coincidence.&#x27; : &#x27;&#x27;)
+    + &#x27;&lt;div class=&quot;bars&quot;&gt;&lt;div style=&quot;height:100%&quot;&gt;12&lt;/div&gt;&lt;div style=&quot;height:92%&quot;&gt;11&lt;/div&gt;&lt;div style=&quot;height:100%&quot;&gt;12&lt;/div&gt;&lt;div style=&quot;height:33%&quot;&gt;4&lt;/div&gt;&lt;div style=&quot;height:17%&quot;&gt;2&lt;/div&gt;&lt;div style=&quot;height:8%&quot;&gt;1&lt;/div&gt;&lt;/div&gt;&#x27;
+    + &#x27;&lt;small&gt;Last six weeks. Worth a check-in, or review &#x27;+P.p+&#x27; recent misses below.&lt;/small&gt;&#x27;;
+}
+function renderSupport(){
+  var q = misses.filter(function(m){return m.route===&#x27;support&#x27; &amp;&amp; m.status===&#x27;requested&#x27;;}), r = &#x27;&#x27;;
+  q.forEach(function(m){ r += &#x27;&lt;tr&gt;&lt;td&gt;&#x27;+P.name+&#x27; (no handler)&lt;/td&gt;&lt;td&gt;&#x27;+m.when+&#x27;&lt;/td&gt;&lt;td&gt;&#x27;+m.reason+&#x27;&lt;/td&gt;&lt;td&gt;&lt;button onclick=&quot;supportDecide(&#x27;+m.id+&#x27;,true)&quot;&gt;Approve&lt;/button&gt; &lt;button onclick=&quot;supportDecide(&#x27;+m.id+&#x27;,false)&quot;&gt;Decline&lt;/button&gt;&lt;/td&gt;&lt;/tr&gt;&#x27;; });
+  $(&#x27;support-rows&#x27;).innerHTML = r; $(&#x27;support-empty&#x27;).style.display = q.length ? &#x27;none&#x27; : &#x27;&#x27;;
+}
+
+function applyEvent(t){
+  if (t===&#x27;taken&#x27;){ newScore += 0.08; oldScore += 0.08; }
+  if (t===&#x27;down&#x27;){ newScore -= 0.12; oldScore -= 0.12; }
+  if (t===&#x27;miss&#x27;){ newScore -= 0.04; oldScore -= 0.12; }
+  newScore = clamp(newScore, 0.2, 1); oldScore = clamp(oldScore, 0, 1);
+}
+function reverseNew(){ newScore = clamp(newScore + 0.04, 0.2, 1); }
+function advanceWeek(){ week++; fire([&#x27;R22&#x27;,E1]); newScore += (0.5 - newScore) * 0.2; audit.push(&#x27;Week &#x27;+week+&#x27; passed: proposed score eased toward neutral (live rules have no recovery).&#x27;); render(); }
+
+function sendPing(reentry){
+  if (timer) return;
+  var left = 60, grace = false, graceUsed = false;
+  graceOn = false; curReentry = !!reentry; fire(reentry ? [&#x27;R7&#x27;,&#x27;R8&#x27;,&#x27;R23&#x27;] : [&#x27;R7&#x27;,&#x27;R8&#x27;]);
+  var title = reentry ? &#x27;Re-entry callout&#x27; : &#x27;New callout&#x27;;
+  var extra = reentry ? &#x27;&lt;p style=&quot;color:#b45309;font-size:13px&quot;&gt;&#x27;+tagNew(3)+&#x27; You haven\&#x27;t been asked for a while. You are close to this one and have the tags it needs.&lt;/p&gt;&#x27; : &#x27;&#x27;;
+  $(&#x27;phone-body&#x27;).innerHTML = &#x27;&lt;div class=&quot;ping&quot;&gt;&lt;h2&gt;&#x27;+title+&#x27;&lt;/h2&gt;&lt;p&gt;&#x27;+P.ping+&#x27;&lt;/p&gt;&#x27;+extra
+    + &#x27;&lt;div class=&quot;ring new&quot; id=&quot;ring&quot;&gt;&lt;/div&gt;&lt;p id=&quot;left-label&quot;&gt;seconds left &#x27;+tagNew(1)+&#x27;&lt;/p&gt;&#x27;
+    + &#x27;&lt;button class=&quot;btn green&quot; onclick=&quot;answer(\&#x27;taken\&#x27;)&quot;&gt;Take it&lt;/button&gt;&lt;button class=&quot;btn plain&quot; onclick=&quot;answer(\&#x27;down\&#x27;)&quot;&gt;Turn down&lt;/button&gt;&#x27;
+    + (rel&gt;=2 ? &#x27;&lt;p style=&quot;font-size:12px&quot;&gt;&#x27;+tagNew(2)+&#x27; Opened before time runs out? You get 15 more seconds.&lt;/p&gt;&#x27; : &#x27;&#x27;)
+    + &#x27;&lt;p style=&quot;font-size:12px;margin-top:10px&quot;&gt;Demo shortcut: &lt;a href=&quot;#&quot; onclick=&quot;skip();return false;&quot;&gt;skip to the last 5 seconds&lt;/a&gt;&lt;/p&gt;&lt;/div&gt;&#x27;;
+  function paint(){ var r=$(&#x27;ring&#x27;); if(!r) return; r.textContent = left; var c = grace ? &#x27;#b45309&#x27; : (left&lt;=10 ? &#x27;#dc2626&#x27; : &#x27;#2563eb&#x27;); r.style.border=&#x27;8px solid &#x27;+c; r.style.color=c; }
+  paint();
+  window._skip = function(){ left = 5; paint(); };
+  timer = setInterval(function(){
+    left--; paint();
+    if (left&lt;=0) {
+      if (rel&gt;=2 &amp;&amp; !graceUsed) { graceUsed = true; grace = true; graceOn = true; fire([&#x27;R12&#x27;]); left = 15; $(&#x27;left-label&#x27;).innerHTML = &#x27;extra seconds — you had already opened it &#x27;+tagNew(2); toast(&#x27;Opened-ping grace: 15 more seconds.&#x27;); paint(); }
+      else endPing(&#x27;missed&#x27;);
+    }
+  }, 1000);
+  render();
+}
+function skip(){ if (window._skip) window._skip(); }
+function endPing(kind){
+  clearInterval(timer); timer = null; totalPings++; graceOn = false; curReentry = false; fire([E1, E2]);
+  if (kind===&#x27;missed&#x27;) {
+    applyEvent(&#x27;miss&#x27;);
+    misses.push({id:nextId++, when:&#x27;Just now&#x27;, opened:true, status:&#x27;counted&#x27;, reason:&#x27;&#x27;, route:&#x27;handler&#x27;});
+    toast(&#x27;That ping timed out. It is counted as a miss, not a turn-down.&#x27;);
+    screen = &#x27;missed&#x27;;
+  } else {
+    applyEvent(kind===&#x27;taken&#x27; ? &#x27;taken&#x27; : &#x27;down&#x27;);
+    toast(kind===&#x27;taken&#x27; ? &#x27;Taken. It is yours.&#x27; : &#x27;Turned down. That keeps the full turn-down cost.&#x27;);
+    screen = &#x27;home&#x27;;
+  }
+  render();
+}
+function answer(k){ endPing(k); }
+function unseenPing(){
+  if (timer) return;
+  totalPings++; noOpened++; fire([&#x27;R11&#x27;, E1, E2]);
+  oldScore = clamp(oldScore - 0.12, 0, 1);
+  var m = {id:nextId++, when:&#x27;Just now&#x27;, opened:false, status:&#x27;counted&#x27;, reason:&#x27;&#x27;, route:&#x27;handler&#x27;};
+  if (100*noOpened/totalPings &lt;= X) { m.status=&#x27;rev-auto&#x27;; toast(&#x27;Never opened and under the limit, so it was reversed automatically.&#x27;); }
+  else { newScore = clamp(newScore - 0.04, 0.2, 1); toast(&#x27;Never opened, but no-opened misses are over &#x27;+X+&#x27;%. Not reversed automatically; &#x27;+P.s+&#x27; can ask for a review.&#x27;); }
+  misses.push(m); screen = &#x27;missed&#x27;; render();
+}
+function openSheet(id){ reviewId=id; var m=misses.filter(function(x){return x.id===id;})[0]; $(&#x27;sheet-when&#x27;).textContent=m.when; $(&#x27;sheet-wrap&#x27;).className=&#x27;overlay on&#x27;; }
+function closeSheet(){ $(&#x27;sheet-wrap&#x27;).className=&#x27;overlay&#x27;; }
+function submitReview(){
+  var why = document.querySelector(&#x27;input[name=why]:checked&#x27;).value, note=$(&#x27;why-note&#x27;).value.trim();
+  var m = misses.filter(function(x){return x.id===reviewId;})[0];
+  m.status=&#x27;requested&#x27;; m.reason = why + (note?&#x27;: &#x27;+note:&#x27;&#x27;);
+  m.route = (rel&gt;=2 &amp;&amp; !hasHandler) ? &#x27;support&#x27; : &#x27;handler&#x27;;
+  $(&#x27;why-note&#x27;).value=&#x27;&#x27;; closeSheet(); fire(rel&gt;=2 ? [&#x27;R10&#x27;,&#x27;R16&#x27;,E2] : [&#x27;R10&#x27;,E2]);
+  toast(m.route===&#x27;support&#x27; ? &#x27;Sent to the support team. See the Support review queue tab.&#x27; : &#x27;Sent to &#x27;+P.handler+&#x27;. See the handler console tab.&#x27;);
+  render();
+}
+
+function markLegit(id){
+  var m = misses.filter(function(x){return x.id===id;})[0];
+  if (excuses&gt;=5) return;
+  m.status=&#x27;rev-handler&#x27;; excuses++; reverseNew(); fire([&#x27;R15&#x27;,&#x27;R18&#x27;,E1,E2]);
+  audit.push(P.handler+&#x27; marked the &#x27;+m.when+&#x27; miss legit. Full reversal.&#x27;);
+  toast(&#x27;Reversed in full and logged. &#x27;+P.name+&#x27; sees it on &#x27;+P.p+&#x27; phone.&#x27;); render();
+}
+function supportDecide(id, ok){
+  var m = misses.filter(function(x){return x.id===id;})[0];
+  fire(ok ? [&#x27;R16&#x27;,&#x27;R15&#x27;,E1,E2] : [&#x27;R16&#x27;,E2]);
+  if (ok) { m.status=&#x27;rev-handler&#x27;; reverseNew(); audit.push(&#x27;Support approved the &#x27;+m.when+&#x27; request. Full reversal.&#x27;); toast(&#x27;Approved and reversed in full.&#x27;); }
+  else { m.status=&#x27;declined&#x27;; audit.push(&#x27;Support declined the &#x27;+m.when+&#x27; request.&#x27;); toast(&#x27;Declined.&#x27;); }
+  render();
+}
+function setX(v){
+  X = clamp(Number(v)||0, 0, 100); fire([&#x27;R11&#x27;,E2]);
+  $(&#x27;x-status&#x27;).textContent = &#x27;Saved: &#x27; + X + &#x27;% (live).&#x27;;
+  audit.push(&#x27;Auto-reversal limit set to &#x27;+X+&#x27;%.&#x27;); render();
+}
+P = PERSONAS.mite; view = &#x27;console&#x27;; resetDemo(); showView(&#x27;console&#x27;);
+&lt;/script&gt;
+&lt;/body&gt;
+&lt;/html&gt;
+"></iframe>
+</section>
+
+<section id="skill">
+  <div class="eyebrow">Keeping it from happening again</div>
+  <h2>The review-checklist skill</h2>
+  <p class="lede" style="font-size:16px">4.2 shipped with Committed roadmap items missing from the release notes, stale briefs, unclear owners, and two changes bundled so nobody could separate them. The skill makes the same six questions fire on every brief, before it moves on.</p>
+  <div class="grid2">
+    <div class="card reveal">
+      <table>
+        <tr><th>#</th><th>Check</th><th>Where 4.2-era work needed it</th></tr>
+        <tr><td>1</td><td>Owner</td><td>Roadmap items "all owned by Priya, stale"; brief still says unowned after ship</td></tr>
+        <tr><td>2</td><td>Success measure</td><td>Neither version of my own brief has a numeric target or measurement date</td></tr>
+        <tr><td>3</td><td>Scope start vs end</td><td>Availability Confidence Committed, absent from notes</td></tr>
+        <tr><td>4</td><td>Problem before fix</td><td>"Don't revert, it's August" before anyone checked</td></tr>
+        <tr><td>5</td><td>Post-release learning</td><td>No answer-time capture, so "why missed?" was unanswerable</td></tr>
+        <tr><td>6</td><td>Who weighs in</td><td>Support, security (Policy 4.1), Supply reads the availability record</td></tr>
+      </table>
+    </div>
+    <div class="card reveal">
+      <h3>First run on my own brief <span class="tag">/review-checklist 05-super-speed/brief.md</span></h3>
+      <p style="font-size:14px;color:var(--mute);margin:0 0 8px">Local brief, scope check <span class="fail">Fail</span>:</p>
+      <ul style="padding-left:18px;margin:0;font-size:14px">
+        <li>R18 excuse cap added without a stated goal</li>
+        <li>R17 and R23 serve no stated goal</li>
+        <li>Review requests ship in A, but their routing ships in B</li>
+        <li>No named delivery owner; no numeric target or measurement date</li>
+        <li>Assumes scores persist, but they sit in memory today</li>
+      </ul>
+      <p style="font-size:13px;color:var(--mute);margin:10px 0 0">The shorter GitHub draft: needs changes (no post-release learning, no answer-time capture, support lead, phone and console teams and a Security 4.1 contact not named).</p>
+    </div>
+  </div>
+  <div class="card reveal"><b>Not done:</b> the Monday scheduled run. CLAUDE.md bars writes outside this folder and I declined the exception, so no schedule was created. A line in CLAUDE.md would allow it.</div>
+</section>
+
+<section id="open">
+  <div class="eyebrow">Before anyone acts on this</div>
+  <h2>Still open</h2>
+  <div class="card reveal"><ul class="caveat" style="padding-left:18px;margin:0">
+    <li><b>Cause isn't proven.</b> Loop, 60s wait, or proximity weight: scores, display-vs-answer logs and travel times aren't in the database. Request drafted for Marcus and Wen Li, <b>not sent</b>.</li>
+    <li><b>Why the four started missing.</b> Leading suspect: people who used to answer at 60–90s. Untestable without response times.</li>
+    <li><b>Scores live in memory.</b> The fix assumes they persist; today a restart may reset everyone.</li>
+    <li><b>Prior-year seasonality</b> is untested; Ravi's reports could settle it.</li>
+    <li><b>Roadmap:</b> Committed vs quietly dropped (Availability Confidence) needs a conversation with Helen.</li>
+    <li><b>Data ends 7 Sep.</b> Nothing after, and 83 of 107 post-release tickets are still open.</li>
+    <li>Security Policy 4.1 wasn't in the wiki; free-text risk is unsettled.</li>
+  </ul></div>
+</section>
+<footer>Rook Industries is a fictional teaching scenario (Product School, ccpm-2026.1). Sources: CLAUDE.md, the six prompts.md files, 05-super-speed/prototype.html, .claude/skills/review-checklist.</footer>
+
+<script>
+// counters
+function count(el){const t=+el.dataset.n,d=+(el.dataset.dec||0),s=el.dataset.suf||'';let st=null;
+ (function f(ts){st=st||ts;const p=Math.min((ts-st)/1200,1);el.textContent=(t*p).toFixed(d)+s;if(p<1)requestAnimationFrame(f)})(performance.now?performance.now():0);}
+document.querySelectorAll('[data-n]').forEach(count);
+// acceptance chart
+const wk=[['29 Jun',77],['6 Jul',76],['13 Jul',78],['20 Jul',75],['27 Jul',77],['3 Aug',76],['10 Aug*',54],['17 Aug',66],['24 Aug',67],['31 Aug',73]];
+const c1=document.getElementById('c1'),x1=document.getElementById('x1');
+wk.forEach(([l,v],i)=>{c1.insertAdjacentHTML('beforeend',`<div class="col"><div class="bar ${i>5?'bad':''}" data-h="${v}"><span>${v}%</span></div></div>`);x1.insertAdjacentHTML('beforeend',`<div>${l}</div>`)});
+c1.insertAdjacentHTML('beforeend','<div style="position:absolute;bottom:0;left:0;font-size:11px;color:var(--mute)"></div>');
+// reveal / animate
+const io=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){e.target.classList.add('in');
+ e.target.querySelectorAll('.bar').forEach(b=>b.style.height=(b.dataset.h*2.3)+'px');
+ e.target.querySelectorAll('.fill').forEach(f=>f.style.width=f.dataset.w);}}),{threshold:.2});
+document.querySelectorAll('.reveal').forEach(e=>io.observe(e));
+// loop toggle
+const L={before:{run:false,nodes:['A responder misses now and then','Score dips a little','Still ranked near the top','Gets pinged often','Takes some, +0.08'],txt:'Before 4.2: roughly 2% missed, acceptance 75–78%. Scores hover and recover because they keep being offered pings.'},
+after:{run:true,nodes:['Ping times out at 60s','Counts as a miss: −0.12','Score falls, rank drops','Pinged less, or never','Can\'t take a ping, so can\'t earn +0.08'],txt:'After 4.2: more misses push scores down; a lower rank means fewer pings; fewer pings means no chance to earn the score back. Scores floor at 0 and never recover. Consistent with the data, not proven.'}};
+function setLoop(m){const d=L[m];const b=document.getElementById('loopbox');b.className='loop'+(d.run?' run':'');
+ b.innerHTML=d.nodes.map((n,i)=>`<div class="node">${n}</div>${i<d.nodes.length-1?'<div class="arr">→</div>':'<div class="arr">↻</div>'}`).join('');
+ document.getElementById('looptxt').textContent=d.txt;
+ document.querySelectorAll('#tog button').forEach(x=>x.classList.toggle('on',x.dataset.m===m));}
+document.querySelectorAll('#tog button').forEach(x=>x.onclick=()=>setLoop(x.dataset.m));setLoop('before');
+// module tabs
+const names=['01 Origin','02 Hearing','03 Rewind','04 X-Ray','05 Speed','06 Sidekicks'];
+const mods=document.getElementById('mods');
+names.forEach((n,i)=>mods.insertAdjacentHTML('beforeend',`<button class="${i?'':'on'}" data-i="${i}">${n}</button>`));
+mods.onclick=e=>{const i=e.target.dataset.i;if(i==null)return;
+ mods.querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.dataset.i===i));
+ document.querySelectorAll('.mod').forEach(m=>m.classList.toggle('on',m.dataset.i===i));};
+// nav highlight
+const secs=[...document.querySelectorAll('section[id]')],links=[...document.querySelectorAll('nav a')];
+addEventListener('scroll',()=>{let cur=secs[0].id;secs.forEach(s=>{if(s.getBoundingClientRect().top<120)cur=s.id});
+ links.forEach(a=>a.classList.toggle('on',a.getAttribute('href')==='#'+cur));});
+</script>
+</body>
+</html>
